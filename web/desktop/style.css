@@ -96,7 +96,7 @@ body{padding-bottom:150px}.hero{padding:18px max(4vw,24px)}.hero h1{font-size:32
 .period-distance,.period-return{font-size:1em;font-weight:700}
 .period-return:first-child{margin-top:0}
 .ranking-pagination button{color:var(--muted);font-weight:400;border-color:transparent;background:transparent}
-.ranking-pages button[aria-current="page"]{color:var(--blue);background:var(--soft);border-color:transparent}
+.ranking-pages button[aria-current="page"]{color:#fff;background:var(--blue);border-color:var(--blue)}
 #expiryRange button{font-weight:400}
 footer a{color:inherit;text-underline-offset:3px}
 
@@ -115,3 +115,10 @@ footer a{color:inherit;text-underline-offset:3px}
 .strike-group-buttons button[aria-pressed="true"],:root[data-theme="dark"] .strike-group-buttons button[aria-pressed="true"]{color:var(--blue);background:transparent;border:0;box-shadow:none;text-decoration:underline;text-underline-offset:5px;font-weight:700}
 @media(max-width:1100px){.hero{gap:10px;padding:10px 16px}.hero-summary{gap:14px}.hero h1{font-size:22px}.hero-status{gap:10px}.hero-status>div{display:grid;gap:0}.hero-status span{font-size:12px}.hero-status b{font-size:14px}.theme-switcher button{font-size:14px;padding:5px 7px}}
 @media(max-width:700px){.hero{overflow-x:auto}.hero-summary{flex:none}.hero-tools{margin-left:0}}
+
+/* Ranking typography and square pagination controls. */
+#rankingView .ranking-table{font-size:17px}
+#rankingView .ranking-table th{font-size:15px}
+#rankingView .filter-group{font-size:16px}
+#rankingView .ranking-pagination button{font-size:16px;min-width:34px;min-height:34px;height:34px;padding:4px;border-radius:6px}
+#rankingView .page-ellipsis{font-size:16px;height:34px}

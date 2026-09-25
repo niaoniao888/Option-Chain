@@ -119,7 +119,7 @@ nav button{height:38px;min-height:38px;padding-block:3px}
 .period-distance,.period-return{font-size:1em;font-weight:700}
 .period-return:first-child{margin-top:0}
 .ranking-pagination button{color:var(--muted);font-weight:400;border-color:transparent;background:transparent}
-.ranking-pages button[aria-current="page"]{color:var(--blue);background:var(--soft);border-color:transparent}
+.ranking-pages button[aria-current="page"]{color:#fff;background:var(--blue);border-color:var(--blue)}
 #expiryRange button{font-weight:400}
 footer a{color:inherit;text-underline-offset:3px}
 
