@@ -45,9 +45,9 @@ function setTheme(theme,persist=false){
   document.documentElement.dataset.theme=selected;
   document.querySelector('meta[name="theme-color"]').content=selected==="dark"?"#101a2e":"#173763";
   document.querySelectorAll("[data-theme-choice]").forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.themeChoice===selected)));
-  if(persist){try{localStorage.setItem("btc-options-mobile-theme",selected);}catch(_){}}
+  if(persist){try{localStorage.setItem("options-panel-theme",selected);}catch(_){}}
 }
-function initialTheme(){try{return localStorage.getItem("btc-options-mobile-theme")==="dark"?"dark":"light";}catch(_){return"light";}}
+function initialTheme(){try{return localStorage.getItem("options-panel-theme")==="dark"?"dark":"light";}catch(_){return"light";}}
 const MOBILE_UI_STATE_KEY="btc-options-mobile-ui-v1";
 const priceSides=new Set(["CALL","PUT"]),rankingRanges=new Set(["LT3","3_7","7_30","30_60","GT60"]),rankingSortKeys=new Set(["expiry_ms","strike","period_return_pct","annualized_pct","exercise_probability_pct"]),rankingDirections=new Set(["asc","desc"]);
 let rememberedExpiry=null,lastStrikeBySide={CALL:null,PUT:null},expiryRestorePending=false,strikeRestorePending={CALL:false,PUT:false},lastPersistedUiState=null;
@@ -227,5 +227,4 @@ window.addEventListener("pageshow",resumePolling);
 window.addEventListener("focus",resumePolling);
 window.addEventListener("online",resumePolling);
 load();setInterval(()=>{if(!state.snapshot)return;if(performance.now()>=state.nextBoundaryPerf)render();else renderLightweight();},1000);
-
 

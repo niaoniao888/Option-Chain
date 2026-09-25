@@ -139,7 +139,11 @@ def create_app(settings: Settings | None = None, state: DashboardState | None = 
 
     @app.get(p("/bitcoin/shared/{name}"))
     def shared_asset(name: str):
-        return file(settings.web_dir / "shared" / name) if name in {"guide.js", "guide.css", "period-return.js", "period-return.css"} else JSONResponse({"error": "静态资源不存在"}, status_code=404)
+        return file(settings.web_dir / "shared" / name) if name in {"guide.js", "guide.css", "period-return.js", "period-return.css", "market-shell.css"} else JSONResponse({"error": "静态资源不存在"}, status_code=404)
+
+    @app.get(p("/shared/{name}"))
+    def global_shared_asset(name: str):
+        return file(settings.web_dir / "shared" / name) if name == "market-shell.css" else JSONResponse({"error": "静态资源不存在"}, status_code=404)
 
     @app.get(p("/us-equities/desktop"))
     def us_desktop_redirect(): return RedirectResponse(p("/us-equities/desktop/"), status_code=308)

@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>美股期权本机管理</title><link rel="stylesheet" href="./admin.css"></head>
+<body><main><header><div><p>仅限本机</p><h1>美股期权管理</h1></div><span id="health">正在验证会话…</span></header><p id="message" role="status"></p>
+<section><h2>自选股票</h2><form id="addForm"><label>股票代码 <input id="symbol" maxlength="10" autocomplete="off" placeholder="例如 AAPL"></label><button>添加</button></form><ul id="watchlist"></ul></section>
+<section><div class="section-head"><h2>个人说明与笔记</h2><div><button id="addSection" type="button">添加分类</button> <button id="reloadGuide" type="button">重新读取</button></div></div><div id="guide"></div><div class="actions"><button id="saveGuide" type="button">保存说明</button></div></section>
+</main><script src="./admin.js" defer></script></body></html>

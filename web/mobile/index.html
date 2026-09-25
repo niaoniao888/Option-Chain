@@ -9,8 +9,10 @@
   <link rel="stylesheet" href="./mobile.css">
   <link rel="stylesheet" href="../shared/guide.css">
   <link rel="stylesheet" href="../shared/period-return.css">
+  <link rel="stylesheet" href="../../shared/market-shell.css">
 </head>
 <body>
+  <nav class="market-tabs" aria-label="市场切换"><a class="active" aria-current="page" href="./">BTC 期权看板</a><a href="../../us-equities/mobile/">美股期权看板</a></nav>
   <header class="topbar">
     <div class="topbar-title"><h1 class="btc-price">BTC：<strong id="indexPrice">—</strong></h1><div class="theme-buttons" role="group" aria-label="颜色主题"><button data-theme-choice="light" aria-pressed="true">浅色</button><button data-theme-choice="dark" aria-pressed="false">深色</button></div></div>
     <section class="top-status" aria-label="数据状态">
@@ -60,4 +62,3 @@
   <script src="./mobile.js" defer></script>
 </body>
 </html>
-

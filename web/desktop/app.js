@@ -51,7 +51,7 @@ const remainingText = (seconds) => {
   const completeHours = Math.floor(safe / 3600);
   return `${Math.floor(completeHours / 24)}天${completeHours % 24}小时`;
 };
-const THEME_KEY = "btc-options-dashboard-theme";
+const THEME_KEY = "options-panel-theme";
 
 function applyTheme(theme, persist = false) {
   const selected = theme === "dark" ? "dark" : "light";
@@ -485,5 +485,4 @@ setInterval(()=>{
   if(performance.now()>=state.nextBoundaryPerf) render();
   else renderLightweight();
 },1000);
-
 
