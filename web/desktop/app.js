@@ -45,7 +45,7 @@ if(contract.side==="PUT")return `<span class="period-metric"><span class="period
   }
   return `<span class="period-metric"><span class="period-distance ${tone}" title="行权价距现价">${distance}</span><span class="period-return" title="单期收益率">${contractPeriodText(contract)}</span></span>`;
 };
-const priceEligibleContract = contract => contract.remaining_seconds>0 && contract.side===state.priceSide && contract.time_value_status!=="negative";
+const priceEligibleContract = contract => contract.remaining_seconds>0 && contract.side===state.priceSide && contract.time_value_status!=="negative" && contract.open_interest!==0 && Number.isFinite(contract.annualized_pct);
 const probabilityText = (contract) => {
   if (contract?.open_interest === 0) return "—";
   if (contract?.probability_display_state === "settling") return "结算中";

@@ -129,6 +129,16 @@ async function harness(path, rememberedView=null, storageBlocked=false, remember
     api.state.snapshot=snapshot(0);api.state.contractsCache=null;api.render();
   }
   const periodBase=snapshot(0).contracts[0];
+  for(const side of ["CALL","PUT"]){
+    api.state.priceSide=side;
+    const valid={...periodBase,side,remaining_seconds:86400,time_value_status:"positive",open_interest:2,annualized_pct:6.08};
+    assert(api.priceEligibleContract(valid),`${path}: valid ${side} must remain visible`);
+    for(const value of [null,undefined,NaN,Infinity,"6.08"]){assert(!api.priceEligibleContract({...valid,annualized_pct:value}),`${path}: blank/invalid ${side} annual must be hidden`);}
+    assert(!api.priceEligibleContract({...valid,open_interest:0}),`${path}: zero OI annual dash must be hidden`);
+    assert(api.priceEligibleContract({...valid,annualized_pct:0}),`${path}: numeric zero must not be treated as missing`);
+  }
+  api.state.priceSide="CALL";
+
   const callPeriod=api.contractPeriodContent({...periodBase,side:"CALL",strike:110000,period_return_pct:1.25}),putPeriod=api.contractPeriodContent({...periodBase,side:"PUT",strike:90000,period_return_pct:-1.25}),flatPeriod=api.contractPeriodContent({...periodBase,strike:100000,period_return_pct:0});
   assert(callPeriod.includes('class="period-distance positive"')&&callPeriod.includes('>+10.00%</span>')&&callPeriod.includes(`title="${isMobile?"单期收益":"单期收益率"}">1.25%`),`${path}: Call positive distance/period lines missing`);
   assert(!putPeriod.includes('period-distance')&&putPeriod.includes(`title="${isMobile?"单期收益":"单期收益率"}">-1.25%`),`${path}: Put must show only premium period return`);
@@ -260,7 +270,7 @@ async function harness(path, rememberedView=null, storageBlocked=false, remember
     {...filterBase,symbol:"MIXED-NEG",strike:80000,time_value_status:"negative",annualized_pct:null,period_return_pct:null},
     {...filterBase,symbol:"MIXED-OK",strike:80000,expiry_ms:base.expiry_ms+1000,annualized_pct:55.55,period_return_pct:5.55},
     {...filterBase,symbol:"ALL-NEG",strike:82500,time_value_status:"negative",annualized_pct:null,period_return_pct:null},
-    {...filterBase,symbol:"ZERO-TV",strike:83000,time_value_status:"zero",time_value:0,annualized_pct:null,period_return_pct:null},
+    {...filterBase,symbol:"ZERO-TV",strike:83000,time_value_status:"zero",time_value:0,annualized_pct:0,period_return_pct:null},
     {...filterBase,symbol:"MISSING-TV",strike:84000,time_value_status:undefined,annualized_pct:null,period_return_pct:null},
     {...filterBase,symbol:"EXPIRED",strike:85000,expiry_ms:dual.server_time_ms,remaining_seconds:0},
     {...filterBase,symbol:"WRONG-SIDE",strike:86000,side:"PUT"},
@@ -268,7 +278,7 @@ async function harness(path, rememberedView=null, storageBlocked=false, remember
   api.state.snapshot=priceFilterSnapshot;api.state.contractsCache=null;api.state.priceSide="CALL";api.state.selectedStrike=82500;api.state.strikeKey="";api.render();
   const filterOptions=isMobile?element("strikeMenu").innerHTML:element("strikeGroupButtons").innerHTML+element("strikeButtons").innerHTML;
   assert.strictEqual(api.state.selectedStrike,83000,`${path}: filtered-out selection must fall back to nearest eligible strike`);
-  assert(filterOptions.includes('data-strike="80000"')&&filterOptions.includes('data-strike="83000"')&&filterOptions.includes('data-strike="84000"'),`${path}: mixed, zero and missing TV candidates must remain selectable`);
+  assert(filterOptions.includes('data-strike="80000"')&&filterOptions.includes('data-strike="83000"')&&!filterOptions.includes('data-strike="84000"'),`${path}: valid and zero annual candidates must remain selectable; missing annual must be removed`);
   assert(!filterOptions.includes('data-strike="82500"')&&!filterOptions.includes('data-strike="85000"')&&!filterOptions.includes('data-strike="86000"'),`${path}: all-negative, expired or wrong-side candidates leaked into price strikes`);
   assert(element("priceYieldBody").innerHTML.includes("Bid = 内在价值"),`${path}: zero-TV price row was removed`);
   api.state.selectedStrike=80000;api.state.strikeKey="";api.render();assert(element("priceYieldBody").innerHTML.includes("55.55%")&&!element("priceYieldBody").innerHTML.includes("Bid &lt; 内在价值"),`${path}: negative expiry row leaked into a mixed eligible strike`);
