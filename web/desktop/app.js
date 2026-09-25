@@ -36,6 +36,7 @@ const contractAnnualContent = contract => {
 const contractPeriodText = contract => contract?.open_interest === 0 ? "—" : (contract?.time_value_status === "positive" ? yieldText(contract?.period_return_pct) : "—");
 const contractPeriodContent = contract => {
   if (!contract || contract.open_interest === 0) return "—";
+if(contract.side==="PUT")return `<span class="period-metric"><span class="period-return" title="单期收益率">${contractPeriodText(contract)}</span></span>`;
   const spot=state.snapshot?.index_price, strike=contract.strike;
   let distance="—", tone="neutral";
   if(Number.isFinite(spot)&&spot>0&&Number.isFinite(strike)&&strike>0){

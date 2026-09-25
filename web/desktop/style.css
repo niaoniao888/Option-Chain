@@ -89,3 +89,29 @@ body{padding-bottom:150px}.hero{padding:18px max(4vw,24px)}.hero h1{font-size:32
 .hero-status .pill.degraded{background:transparent;color:#ffdc91}
 .hero-status .pill.error{background:transparent;color:#ffb3b3}
 @media(max-width:760px){.hero-summary{flex-basis:100%}.hero-status{gap:8px 18px}.hero-status>div{flex-wrap:wrap}.hero-status span{font-size:14px}.hero-status b{font-size:16px}}
+
+/* Stable notification slot; long messages remain readable by scrolling. */
+#notice{height:48px;box-sizing:border-box;overflow:auto;margin:0;line-height:24px;padding:10px 14px}
+#notice.hidden{display:block!important;visibility:hidden;pointer-events:none}
+.period-distance,.period-return{font-size:1em;font-weight:700}
+.period-return:first-child{margin-top:0}
+.ranking-pagination button{color:var(--muted);font-weight:400;border-color:transparent;background:transparent}
+.ranking-pages button[aria-current="page"]{color:var(--blue);background:var(--soft);border-color:transparent}
+#expiryRange button{font-weight:400}
+footer a{color:inherit;text-underline-offset:3px}
+
+/* Compact desktop title/status/theme row. */
+.hero{flex-wrap:nowrap;gap:16px;padding:12px max(2vw,20px);flex-direction:row}
+.hero-summary{display:flex;align-items:center;gap:24px;flex:1 1 auto;min-width:0}
+.hero h1{white-space:nowrap;font-size:26px;flex:none}
+.hero-status{margin:0;gap:14px;flex-wrap:nowrap}
+.hero-status>div{gap:6px;flex-wrap:nowrap}
+.hero-status span{font-size:14px}.hero-status b{font-size:16px}
+.hero-tools{flex:none}.theme-switcher button{font-size:16px;padding:6px 10px}
+.price-toolbar{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.price-toolbar .current-strike{margin:0;font-weight:700}
+.strike-group-buttons{background:transparent;border:0;padding:4px 2px;gap:12px}
+.strike-group-buttons button{border:0;border-radius:0;padding:4px 2px;min-height:32px;font-weight:400;background:transparent;box-shadow:none}
+.strike-group-buttons button[aria-pressed="true"],:root[data-theme="dark"] .strike-group-buttons button[aria-pressed="true"]{color:var(--blue);background:transparent;border:0;box-shadow:none;text-decoration:underline;text-underline-offset:5px;font-weight:700}
+@media(max-width:1100px){.hero{gap:10px;padding:10px 16px}.hero-summary{gap:14px}.hero h1{font-size:22px}.hero-status{gap:10px}.hero-status>div{display:grid;gap:0}.hero-status span{font-size:12px}.hero-status b{font-size:14px}.theme-switcher button{font-size:14px;padding:5px 7px}}
+@media(max-width:700px){.hero{overflow-x:auto}.hero-summary{flex:none}.hero-tools{margin-left:0}}

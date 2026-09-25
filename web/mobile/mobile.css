@@ -112,3 +112,15 @@ nav button{height:38px;min-height:38px;padding-block:3px}
 @media(max-width:350px){#strikeMenu{left:auto;right:0}}
 
 #strikeMenu button,#strikeMenu button[aria-selected="true"]{color:var(--ink)}
+
+/* Stable notification slot; long messages remain readable by scrolling. */
+#notice{height:48px;box-sizing:border-box;overflow:auto;margin:0;line-height:24px;padding:10px 14px}
+#notice.hidden{display:block!important;visibility:hidden;pointer-events:none}
+.period-distance,.period-return{font-size:1em;font-weight:700}
+.period-return:first-child{margin-top:0}
+.ranking-pagination button{color:var(--muted);font-weight:400;border-color:transparent;background:transparent}
+.ranking-pages button[aria-current="page"]{color:var(--blue);background:var(--soft);border-color:transparent}
+#expiryRange button{font-weight:400}
+footer a{color:inherit;text-underline-offset:3px}
+
+#notice{height:64px;font-size:.82em;line-height:20px}

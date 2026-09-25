@@ -44,7 +44,7 @@
       </div></div>
       <p id="rankingCount" class="detail"></p>
       <div class="mobile-table-wrap ranking-scroll"><table class="ranking-table"><colgroup><col class="rank-date"><col class="rank-strike"><col class="metric-period"><col class="rank-annual"><col class="metric-prob"></colgroup><thead id="rankingHead"><tr><th aria-sort="none"><button type="button" class="sort-button" data-sort="expiry_ms">到期日<span class="sort-arrow"></span></button></th><th aria-sort="none"><button type="button" class="sort-button" data-sort="strike">行权价<span class="sort-arrow"></span></button></th><th aria-sort="none"><button type="button" class="sort-button" data-sort="period_return_pct">单期收益<span class="sort-arrow"></span></button></th><th aria-sort="descending"><button type="button" class="sort-button" data-sort="annualized_pct">年化<span class="sort-arrow">▼</span></button></th><th aria-sort="none"><button type="button" class="sort-button" data-sort="exercise_probability_pct">行权概率<span class="sort-arrow"></span></button></th></tr></thead><tbody id="rankingBody"></tbody></table></div>
-      <div class="ranking-pagination" aria-label="排行分页"><button type="button" id="rankingPrev" class="page-arrow" aria-label="上一页">‹</button><div id="rankingPages" class="ranking-pages"></div><button type="button" id="rankingNext" class="page-arrow" aria-label="下一页">›</button></div>
+      <div class="ranking-pagination" aria-label="排行分页"><button type="button" id="rankingPrev" class="page-arrow" aria-label="上一页">&lt;</button><div id="rankingPages" class="ranking-pages"></div><button type="button" id="rankingNext" class="page-arrow" aria-label="下一页">&gt;</button></div>
     </section>
 
     <section id="guideView" class="panel guide-view hidden" data-guide-mode="readonly" aria-labelledby="guideTitle">
@@ -53,7 +53,7 @@
       <div id="guideContent" class="guide-content"></div>
     </section>
   </main>
-  <footer>数据来源：币安（Binance Options EAPI）</footer>
+  <footer>数据来源：币安（<a href="https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data" target="_blank" rel="noopener noreferrer">Binance Options EAPI</a>）</footer>
   <script src="../shared/guide.js" defer></script>
   <script src="./mobile.js" defer></script>
 </body>
