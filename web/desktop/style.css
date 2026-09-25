@@ -77,3 +77,15 @@ body{padding-bottom:150px}.hero{padding:18px max(4vw,24px)}.hero h1{font-size:32
 #rankingView .filters{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:10px}
 #rankingView #expiryRange{width:max-content;max-width:100%;gap:3px;padding:3px}
 #rankingView #expiryRange button{flex:0 0 auto;min-height:36px;padding:4px 10px}
+
+/* Live status belongs to the header, without separate cards. */
+.hero-summary{min-width:0;flex:1 1 600px}
+.hero-status{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 28px;margin-top:12px}
+.hero-status>div{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.hero-status span{color:#d8e4ff;font-size:16px}
+.hero-status b{color:#fff;font-size:18px}
+.hero-status .pill{padding:0;border-radius:0;background:transparent}
+.hero-status .pill.healthy{background:transparent;color:#aaf1d9}
+.hero-status .pill.degraded{background:transparent;color:#ffdc91}
+.hero-status .pill.error{background:transparent;color:#ffb3b3}
+@media(max-width:760px){.hero-summary{flex-basis:100%}.hero-status{gap:8px 18px}.hero-status>div{flex-wrap:wrap}.hero-status span{font-size:14px}.hero-status b{font-size:16px}}

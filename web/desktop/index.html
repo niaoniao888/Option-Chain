@@ -9,7 +9,13 @@
 </head>
 <body>
   <header class="hero">
-    <div><h1>BTC 期权看板</h1></div>
+    <div class="hero-summary"><h1>BTC 期权看板</h1>
+    <section class="hero-status" aria-label="数据状态">
+      <div><span>数据时间</span><b id="fetchedAt">等待数据</b></div>
+      <div><span>下次刷新</span><b id="countdown">—</b></div>
+      <div><span>校对状态</span><b id="health" class="pill">加载中</b></div>
+    </section>
+    </div>
     <div class="hero-tools">
       <div class="theme-switcher" role="group" aria-label="页面颜色主题">
         <button type="button" data-theme-choice="light" aria-pressed="true">浅色</button>
@@ -18,11 +24,7 @@
     </div>
   </header>
   <main>
-    <section class="status-grid" aria-label="数据状态">
-      <div><span>数据时间</span><b id="fetchedAt">等待数据</b></div>
-      <div><span>下次刷新</span><b id="countdown">—</b></div>
-      <div><span>校对状态</span><b id="health" class="pill">加载中</b></div>
-    </section>
+
     <section id="notice" class="notice hidden" role="alert"></section>
 
     <nav class="tabs" aria-label="视图切换">

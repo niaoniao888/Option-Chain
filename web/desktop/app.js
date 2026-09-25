@@ -200,7 +200,7 @@ function strikeGroupFor(value){return Math.floor(Number(value)/10000)*10000;}
 function renderExpiryDetail() {
   const remaining = state.selectedExpiry ? (state.selectedExpiry-currentServerMs())/1000 : null;
   $("expiryDetail").textContent = state.selectedExpiry
-    ? `到期时间：${shanghai(state.selectedExpiry)} · 剩余 ${remainingText(remaining)}`
+    ? `到期时间：${shanghai(state.selectedExpiry).slice(0,16)} · 剩余 ${remainingText(remaining)}`
     : "没有未到期合约";
 }
 
