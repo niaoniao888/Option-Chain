@@ -70,7 +70,7 @@ body{padding-bottom:150px}.hero{padding:18px max(4vw,24px)}.hero h1{font-size:32
 .ranking-table th,.ranking-table td{text-align:center}.ranking-table th:first-child,.ranking-table td:first-child{text-align:center}.sort-button{display:inline-flex;align-items:center;justify-content:center;gap:5px;width:100%;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;cursor:pointer;padding:2px}.sort-button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}.sort-arrow{display:inline-block;min-width:1em;color:var(--blue)}.rank-relative{display:block;margin-top:2px;font-size:.78em;font-weight:700}.filter-group{display:grid;gap:6px;color:var(--muted);font-size:18px}.segmented-filter{display:flex;flex-wrap:wrap;gap:4px;padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}.segmented-filter button{flex:1 1 auto;min-height:44px;border:0;border-radius:7px;background:transparent;color:var(--muted);padding:7px 12px;font:inherit;font-weight:800;cursor:pointer}.segmented-filter button[aria-pressed="true"]{background:var(--blue);color:#fff;box-shadow:0 2px 7px rgba(20,60,120,.18)}.segmented-filter button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}.ranking-pagination{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:12px}.ranking-pagination button{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--blue);padding:6px;font:inherit;font-weight:700;cursor:pointer}.ranking-pagination button:disabled{opacity:.45;cursor:default}.ranking-pages{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;min-width:0}.ranking-pages button[aria-current="page"]{background:var(--blue);border-color:var(--blue);color:#fff}.page-ellipsis{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:44px;color:var(--muted);font-size:.88em}.page-arrow{font-size:1.25em}
 #sideFilter{width:190px;max-width:100%}
 .tv-warning{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;color:var(--green);font-size:14px;line-height:1.25}.tv-warning small{display:block;margin-top:3px;color:var(--muted);font-size:12px}.tv-warning .mark-reference{color:var(--blue);font-weight:700}.mark-reference{white-space:normal}
-.period-metric,.period-distance,.period-return{display:block}.period-metric{line-height:1.25}.period-distance{font-size:.86em;font-weight:700}.period-distance.positive{color:var(--red)}.period-distance.negative{color:var(--green)}.period-distance.neutral{color:var(--muted)}.period-return{margin-top:2px;color:var(--ink);font-weight:700}
+
 .filters{grid-template-columns:190px minmax(0,1fr);min-width:0;max-width:100%}.filters .filter-group,.filters .segmented-filter{min-width:0;max-width:100%}@media(max-width:760px){.filters{grid-template-columns:1fr}}
 
 /* Keep ranking controls compact rather than stretching across the panel. */
@@ -93,8 +93,8 @@ body{padding-bottom:150px}.hero{padding:18px max(4vw,24px)}.hero h1{font-size:32
 /* Stable notification slot; long messages remain readable by scrolling. */
 #notice{height:48px;box-sizing:border-box;overflow:auto;margin:0;line-height:24px;padding:10px 14px}
 #notice.hidden{display:block!important;visibility:hidden;pointer-events:none}
-.period-distance,.period-return{font-size:1em;font-weight:700}
-.period-return:first-child{margin-top:0}
+
+
 .ranking-pagination button{color:var(--muted);font-weight:400;border-color:transparent;background:transparent}
 .ranking-pages button[aria-current="page"]{color:#fff;background:var(--blue);border-color:var(--blue)}
 #expiryRange button{font-weight:400}

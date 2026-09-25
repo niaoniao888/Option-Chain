@@ -68,3 +68,9 @@ flowchart LR
 - Host 白名单和同源资源策略默认开启，没有通配 CORS。iframe 默认仅同源允许。
 - 多 worker/多副本并不共享内存。扩大规模前，将唯一采集器与 Redis 等共享存储分离，再部署无采集职责的 API 实例。当前没有实现这一分布式模式。
 - 没有框架迁移到 React：现有交互已成熟，保留原生页面可减少回归。团队可只使用版本化 JSON API，用自己的网站技术栈重做界面。
+
+## 单期收益共享展示
+
+后端 `domain/calculations.py::yield_metrics()` 统一计算 `period_return_pct`，每轮成功行情冻结到快照；页面不重新计算收益。PC 和手机版的期权链、价格年化、年化排行均调用 `web/shared/period-return.js` 的 `OptionsPeriodReturn.render(contract, snapshot.index_price)`，样式只在 `web/shared/period-return.css` 定义。新增视图应加载这两个资源并复用该函数，不能复制格式化规则。`model()` 提供相同输入对应的展示数据。
+
+Call 第一行为行权价距同轮指数价的幅度，第二行为后台单期收益；两行等字号、右对齐，第二行非负数预留一个符号空格。Put 仅显示单期收益。零持仓和不可用值沿用原规则，格式化不会改动源数据。

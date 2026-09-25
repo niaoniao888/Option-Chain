@@ -53,7 +53,7 @@ nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}nav butto
 .ranking-table col.rank-date{width:22%}.ranking-table col.rank-strike{width:21%}.ranking-table col.metric-period{width:20%}.ranking-table col.rank-annual{width:18%}.ranking-table col.metric-prob{width:19%}
 .price-yield-table th,.ranking-table th{padding:7px 2px;line-height:1.18;white-space:normal;overflow-wrap:normal;word-break:normal}.price-yield-table td,.ranking-table td{padding:8px 2px;line-height:1.25}.price-yield-table thead{font-size:.96em}.price-yield-table .nowrap-label{font-size:.94em}
 .price-yield-table td strong,.ranking-table td,.ranking-table td span,.ranking-table td strong{white-space:nowrap}.price-yield-table td:nth-child(2),.price-yield-table td:nth-child(2) strong,.price-yield-table .tv-warning,.price-yield-table .tv-warning small{white-space:normal;overflow-wrap:anywhere;word-break:break-word}.compact-date{white-space:normal!important;overflow-wrap:normal;word-break:keep-all;line-height:1.25}.ranking-table .rank-relative{white-space:nowrap}
-.period-metric,.period-distance,.period-return{display:block;max-width:100%;white-space:nowrap}.period-metric{line-height:1.14}.period-distance{font-size:.9em;font-weight:800}.period-distance.positive{color:var(--red)}.period-distance.negative{color:var(--green)}.period-distance.neutral{color:var(--muted)}.period-return{margin-top:1px;color:var(--ink);font-weight:800}
+
 @media(max-width:350px){.price-yield-table,.ranking-table{font-size:10px}.price-yield-table th,.ranking-table th{padding-inline:1px}.price-yield-table td,.ranking-table td{padding-inline:1px}.price-controls{gap:7px 9px}}
 
 /* Price selector: compact control with a more legible value and chevron. */
@@ -116,8 +116,8 @@ nav button{height:38px;min-height:38px;padding-block:3px}
 /* Stable notification slot; long messages remain readable by scrolling. */
 #notice{height:48px;box-sizing:border-box;overflow:auto;margin:0;line-height:24px;padding:10px 14px}
 #notice.hidden{display:block!important;visibility:hidden;pointer-events:none}
-.period-distance,.period-return{font-size:1em;font-weight:700}
-.period-return:first-child{margin-top:0}
+
+
 .ranking-pagination button{color:var(--muted);font-weight:400;border-color:transparent;background:transparent}
 .ranking-pages button[aria-current="page"]{color:#fff;background:var(--blue);border-color:var(--blue)}
 #expiryRange button{font-weight:400}

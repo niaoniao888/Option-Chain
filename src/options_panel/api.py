@@ -128,7 +128,7 @@ def create_app(settings: Settings | None = None, state: DashboardState | None = 
 
     @app.get(p("/bitcoin/shared/{name}"))
     def shared_asset(name: str):
-        return file(settings.web_dir / "shared" / name) if name in {"guide.js", "guide.css"} else JSONResponse({"error": "静态资源不存在"}, status_code=404)
+        return file(settings.web_dir / "shared" / name) if name in {"guide.js", "guide.css", "period-return.js", "period-return.css"} else JSONResponse({"error": "静态资源不存在"}, status_code=404)
 
     @app.get(p("/api/v1/modules"))
     def modules(): return public_modules(base)

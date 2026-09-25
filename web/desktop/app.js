@@ -33,18 +33,7 @@ const contractAnnualContent = contract => {
   }
   return yieldText(contract?.annualized_pct);
 };
-const contractPeriodText = contract => contract?.open_interest === 0 ? "—" : (contract?.time_value_status === "positive" ? yieldText(contract?.period_return_pct) : "—");
-const contractPeriodContent = contract => {
-  if (!contract || contract.open_interest === 0) return "—";
-if(contract.side==="PUT")return `<span class="period-metric"><span class="period-return" title="单期收益率">${contractPeriodText(contract)}</span></span>`;
-  const spot=state.snapshot?.index_price, strike=contract.strike;
-  let distance="—", tone="neutral";
-  if(Number.isFinite(spot)&&spot>0&&Number.isFinite(strike)&&strike>0){
-    const relative=(strike/spot-1)*100;
-    if(Number.isFinite(relative)){tone=Math.abs(relative)<1e-12?"neutral":relative>0?"positive":"negative";distance=`${relative>0?"+":""}${fmtNum(relative,2)}%`;}
-  }
-  return `<span class="period-metric"><span class="period-distance ${tone}" title="行权价距现价">${distance}</span><span class="period-return" title="单期收益率">${contractPeriodText(contract)}</span></span>`;
-};
+const contractPeriodContent = contract => OptionsPeriodReturn.render(contract, state.snapshot?.index_price);
 const priceEligibleContract = contract => contract.remaining_seconds>0 && contract.side===state.priceSide && contract.time_value_status!=="negative" && contract.open_interest!==0 && Number.isFinite(contract.annualized_pct);
 const probabilityText = (contract) => {
   if (contract?.open_interest === 0) return "—";

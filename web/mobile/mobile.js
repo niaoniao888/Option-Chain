@@ -11,9 +11,7 @@ const yieldText=value=>Number.isFinite(value)?`${fmt(value,2)}%`:"—";
 const timeValueText=value=>!Number.isFinite(value)?"—":value===0?"0.00":Math.abs(value)<.01?`${value<0?"-":""}&lt;0.01`:fmt(value,2);
 const markReference = contract => Number.isFinite(contract?.mark_annualized_pct) ? ` · Mark ${fmt(contract.mark_annualized_pct,1)}%` : "";
 const contractAnnualContent=contract=>{if(contract?.open_interest===0)return"—";if(contract?.time_value_status==="negative")return'<span class="tv-warning">Bid &lt; 内在价值</span>';if(contract?.time_value_status==="zero"){const label="Bid = 内在价值";return`<span class="tv-warning">${label}<small>TV ${timeValueText(contract.time_value)}${markReference(contract)}</small></span>`;}return yieldText(contract?.annualized_pct);};
-const contractPeriodText=contract=>contract?.open_interest===0?"—":contract?.time_value_status==="positive"?yieldText(contract?.period_return_pct):"—";
-const contractPeriodContent=contract=>{if(!contract||contract.open_interest===0)return"—";if(contract.side==="PUT")return `<span class="period-metric"><span class="period-return" title="单期收益">${contractPeriodText(contract)}</span></span>`;
-const spot=state.snapshot?.index_price,strike=contract.strike;let distance="—",tone="neutral";if(Number.isFinite(spot)&&spot>0&&Number.isFinite(strike)&&strike>0){const relative=(strike/spot-1)*100;if(Number.isFinite(relative)){tone=Math.abs(relative)<1e-12?"neutral":relative>0?"positive":"negative";distance=`${relative>0?"+":""}${fmt(relative,2)}%`;}}return`<span class="period-metric"><span class="period-distance ${tone}" title="行权价距现价">${distance}</span><span class="period-return" title="单期收益">${contractPeriodText(contract)}</span></span>`;};
+const contractPeriodContent = contract => OptionsPeriodReturn.render(contract, state.snapshot?.index_price);
 const priceEligibleContract=contract=>contract.remaining_seconds>0&&contract.side===state.priceSide&&contract.time_value_status!=="negative" && contract.open_interest!==0 && Number.isFinite(contract.annualized_pct);
 const probabilityText=contract=>{
   if(contract?.open_interest===0)return"—";
