@@ -1,0 +1,97 @@
+{
+  "format_version": 1,
+  "captured_on": "2026-09-26",
+  "description": "Original BTC dashboard source baseline; paths are relative, runtime logs excluded.",
+  "files": [
+    {
+      "path": "data/options-guide.json",
+      "sha256": "e740ac934ecce31dd6d4fee172b6cbe5c09ea84c89cda890e89d6e3492592d1a",
+      "bytes": 9364
+    },
+    {
+      "path": "guide_store.py",
+      "sha256": "38129a87955030068865d5d422526f3aced993005a68f32e89cada183c66b280",
+      "bytes": 8333
+    },
+    {
+      "path": "mobile_server.py",
+      "sha256": "905c5d0b611abdc13c825606c7e0c78e7e629b67c1a3c45fcce11a64c37da8b1",
+      "bytes": 9312
+    },
+    {
+      "path": "README.md",
+      "sha256": "71ddf6e7d142deeb7e4df676864d61b2394121885313ea1b9639ce9399ca96af",
+      "bytes": 26351
+    },
+    {
+      "path": "server.py",
+      "sha256": "2304f6d1e3794839d2e01e7bde2665474d0c73ff3b3746faf0c1fd614deda65a",
+      "bytes": 50649
+    },
+    {
+      "path": "static/app.js",
+      "sha256": "2d40c1e786c5f96af4c9f209951fc18bea2c504adad200d1846c7ad67c1e0c98",
+      "bytes": 30919
+    },
+    {
+      "path": "static/guide.css",
+      "sha256": "9856d5427b32502b3ce29aecd1304a743dd818cbb3fa7ab109336e7431bbe927",
+      "bytes": 2424
+    },
+    {
+      "path": "static/guide.js",
+      "sha256": "99aec1601b3e98802995a35575325cc4b60558db60879c6a14361d5a36542132",
+      "bytes": 11969
+    },
+    {
+      "path": "static/index.html",
+      "sha256": "c81a2acd73453d4d79b8e2c31f3acac789b334d33ffba3a636e7b118f1b9dec3",
+      "bytes": 7137
+    },
+    {
+      "path": "static/mobile.css",
+      "sha256": "55d2091c287aec3291a5e14dfc26920abca9dea1fa8d441c9e994ee2482bc620",
+      "bytes": 24743
+    },
+    {
+      "path": "static/mobile.html",
+      "sha256": "dd8179c81084b0c10201a742132b7e91933d1ee79b30681bb35e2a0c624da435",
+      "bytes": 6834
+    },
+    {
+      "path": "static/mobile.js",
+      "sha256": "1017531d5ec2f82971b86b437102222c3866d7e5a1c35bf2ff09d460e650c57a",
+      "bytes": 35064
+    },
+    {
+      "path": "static/style.css",
+      "sha256": "adbf3414ddc69d1d02984ce21bfb7276d0c8bfac58599a3e559bbcf879e652ec",
+      "bytes": 22131
+    },
+    {
+      "path": "tests/test_guide.js",
+      "sha256": "19b7b305bdf48d17dd8ca98c3d0e119cc434a3f539e40e9515e08973428c0b4e",
+      "bytes": 11533
+    },
+    {
+      "path": "tests/test_mobile.py",
+      "sha256": "cae4f08b74f2c52af80ee8a023791b5b3a45fc3f9f49431af8eb988371cd0acd",
+      "bytes": 7870
+    },
+    {
+      "path": "tests/test_reliability.py",
+      "sha256": "89c774175fa14c04db1b7dc6f9f0ccdc67773cb8ae5de20578a6c8f7c702875d",
+      "bytes": 12198
+    },
+    {
+      "path": "tests/test_server.py",
+      "sha256": "a10a4e5a41620943481e8080d90b0dbd8d0ca468fa3003433feaf8ad7e9cd67c",
+      "bytes": 45382
+    },
+    {
+      "path": "tests/test_ui.js",
+      "sha256": "b9d8b1f29c8853cca1be87d7f95e563f36e0514dee097f46ff503d8c2c55b303",
+      "bytes": 66324
+    }
+  ]
+}

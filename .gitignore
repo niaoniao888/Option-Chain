@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+/runtime/
+/.env
+/.env.*
+!/.env.example
+/dist/
+/build/
+*.egg-info/
+.ruff_cache/
+*.log
+*.lnk
+.DS_Store
+Thumbs.db
+

@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "options-panel"
+version = "2.0.0"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.141.1,<0.142",
+  "uvicorn>=0.54,<0.55",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

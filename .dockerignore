@@ -1,0 +1,12 @@
+*
+!Dockerfile
+!requirements.lock
+!src/
+!src/**
+!web/
+!web/**
+!content/
+!content/**
+**/__pycache__/
+**/*.pyc
+**/*.egg-info/

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="mobile-dashboard-app" content="btc-options-dashboard-mobile">
+  <meta name="theme-color" content="#173763">
+  <title>BTC 期权看板</title>
+  <link rel="stylesheet" href="./mobile.css">
+  <link rel="stylesheet" href="../shared/guide.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-title"><h1 class="btc-price">BTC：<strong id="indexPrice">—</strong></h1><div class="theme-buttons" role="group" aria-label="颜色主题"><button data-theme-choice="light" aria-pressed="true">浅色</button><button data-theme-choice="dark" aria-pressed="false">深色</button></div></div>
+    <section class="top-status" aria-label="数据状态">
+      <div><span>数据时间</span><b id="fetchedAt">等待数据</b></div>
+      <div><span>下次刷新</span><b id="countdown">—</b></div>
+      <div><span>校对状态</span><b id="health" class="pill">加载中</b></div>
+    </section>
+  </header>
+  <main>
+    <div id="notice" class="notice hidden" role="alert"></div>
+
+    <nav><button class="tab active" data-view="chain">期权链</button><button class="tab" data-view="price">价格年化</button><button class="tab" data-view="ranking">年化排行</button><button class="tab" data-view="guide">期权说明</button></nav>
+
+    <section id="chainView" class="panel">
+      <div class="chain-expiry-controls"><div id="expiryPicker" class="compact-picker expiry-picker"><button type="button" aria-label="选择到期日" id="expiryTrigger" aria-haspopup="listbox" aria-controls="expiryMenu" aria-expanded="false"><span id="expiryValue">—</span><span aria-hidden="true">▼</span></button><div id="expiryMenu" class="picker-menu expiry-menu hidden" role="listbox" aria-label="到期日"></div></div>
+      <p id="expiryDetail" class="detail">—</p></div>
+      <div class="mobile-table-wrap chain-scroll"><table class="chain"><colgroup><col class="metric-prob"><col class="metric-period"><col class="metric-annual"><col class="metric-strike"><col class="metric-annual"><col class="metric-period"><col class="metric-prob"></colgroup><thead><tr><th>行权概率</th><th>单期收益</th><th class="annual-column"><span class="nowrap-label">Covered Call</span><br>年化</th><th class="strike-cell">行权价</th><th class="annual-column">Sell Put<br>年化</th><th>单期收益</th><th>行权概率</th></tr></thead><tbody id="chainBody"></tbody></table></div>
+    </section>
+
+    <section id="priceView" class="panel hidden">
+      <div class="price-controls">
+        <div class="filter-group"><div id="priceSideFilter" class="segmented-filter price-side-filter" role="group" aria-label="价格年化方向"><button type="button" aria-pressed="true" data-value="CALL">Call</button><button type="button" aria-pressed="false" data-value="PUT">Put</button></div></div>
+        <div id="strikePicker" class="strike-picker"><button type="button" aria-label="选择行权价" id="strikeTrigger" aria-haspopup="listbox" aria-controls="strikeMenu" aria-expanded="false"><span id="strikeValue">—</span><span aria-hidden="true">▼</span></button><div id="strikeMenu" class="strike-menu hidden" role="listbox" aria-label="行权价"></div></div>
+      </div>
+      <div class="mobile-table-wrap price-scroll"><table class="price-yield-table"><colgroup><col class="price-date"><col class="metric-annual"><col class="metric-period"><col class="metric-prob"><col class="price-remaining"></colgroup><thead><tr><th>到期日</th><th id="priceAnnualHead"><span class="nowrap-label">Covered Call</span><br>年化</th><th>单期收益</th><th>行权概率</th><th>剩余时间</th></tr></thead><tbody id="priceYieldBody"></tbody></table></div>
+    </section>
+
+    <section id="rankingView" class="panel hidden">
+      <div class="filter-box"><div id="filters">
+        <div class="filter-group"><div id="sideFilter" class="segmented-filter" role="group" aria-label="方向"><button type="button" aria-pressed="true" data-value="CALL">Call</button><button type="button" aria-pressed="false" data-value="PUT">Put</button></div></div>
+        <div class="filter-group"><div id="expiryRange" class="segmented-filter" role="group" aria-label="期限"><button type="button" aria-pressed="true" data-value="LT3">&lt;3天</button><button type="button" aria-pressed="false" data-value="3_7">3-7天</button><button type="button" aria-pressed="false" data-value="7_30">7-30天</button><button type="button" aria-pressed="false" data-value="30_60">30-60天</button><button type="button" aria-pressed="false" data-value="GT60">&gt;60天</button></div></div>
+      </div></div>
+      <p id="rankingCount" class="detail"></p>
+      <div class="mobile-table-wrap ranking-scroll"><table class="ranking-table"><colgroup><col class="rank-date"><col class="rank-strike"><col class="metric-period"><col class="rank-annual"><col class="metric-prob"></colgroup><thead id="rankingHead"><tr><th aria-sort="none"><button type="button" class="sort-button" data-sort="expiry_ms">到期日<span class="sort-arrow"></span></button></th><th aria-sort="none"><button type="button" class="sort-button" data-sort="strike">行权价<span class="sort-arrow"></span></button></th><th aria-sort="none"><button type="button" class="sort-button" data-sort="period_return_pct">单期收益<span class="sort-arrow"></span></button></th><th aria-sort="descending"><button type="button" class="sort-button" data-sort="annualized_pct">年化<span class="sort-arrow">▼</span></button></th><th aria-sort="none"><button type="button" class="sort-button" data-sort="exercise_probability_pct">行权概率<span class="sort-arrow"></span></button></th></tr></thead><tbody id="rankingBody"></tbody></table></div>
+      <div class="ranking-pagination" aria-label="排行分页"><button type="button" id="rankingPrev" class="page-arrow" aria-label="上一页">‹</button><div id="rankingPages" class="ranking-pages"></div><button type="button" id="rankingNext" class="page-arrow" aria-label="下一页">›</button></div>
+    </section>
+
+    <section id="guideView" class="panel guide-view hidden" data-guide-mode="readonly" aria-labelledby="guideTitle">
+      <div class="guide-head"><div><h2 id="guideTitle">期权说明</h2><p id="guideMeta" class="guide-meta">打开本页后加载</p></div></div>
+      <p id="guideMessage" class="guide-message" role="status" aria-live="polite"></p>
+      <div id="guideContent" class="guide-content"></div>
+    </section>
+  </main>
+  <footer>数据来源：币安（Binance Options EAPI）</footer>
+  <script src="../shared/guide.js" defer></script>
+  <script src="./mobile.js" defer></script>
+</body>
+</html>
+
