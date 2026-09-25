@@ -14,12 +14,16 @@ from .model import parse_verified_utc
 from .refresh_policy import (ACTIVE_WINDOW_SECONDS, MARKET_REFRESH_SECONDS,
                             SCHEDULER_TICK_SECONDS, STALE_AFTER_SECONDS,
                             TASK_START_INTERVAL_SECONDS, IDLE_CACHE_SECONDS,
-                            MAX_IDLE_CACHE_SYMBOLS, CLIENT_SEQUENCE_RETENTION_SECONDS)
+                            MAX_IDLE_CACHE_SYMBOLS, CLIENT_SEQUENCE_RETENTION_SECONDS, MAX_TRACKED_CLIENTS)
 from .request_throttle import DEFAULT_HTTP_GATE
 
 
 def utc_now_iso(clock: Callable[[], float] = time.time) -> str:
     return datetime.fromtimestamp(clock(), timezone.utc).isoformat().replace("+00:00", "Z")
+
+class ClientCapacityError(RuntimeError):
+    pass
+
 
 class MarketService:
     def __init__(self, adapter, *, wall_clock=time.time, monotonic=time.monotonic,
@@ -54,7 +58,7 @@ class MarketService:
                 "source_delay_label": "股票 IEX；期权 Indicative（免费调整参考源，非真实 OPRA）",
                 "freshness": "unavailable", "quote_time": None, "fetched_at": None, "calculated_at": None,
                 "calculation_basis": "等待完整快照", "underlying_price": None, "contracts": [],
-                "error": "正在获取首轮完整快照" if configured else "尚未配置并验证 Alpaca Paper 凭据；请双击配置入口",
+                "error": "正在获取首轮完整快照" if configured else "待配置 Alpaca 凭据，请参阅项目配置说明",
                 "mode": "unavailable", "latest_completed_session_date": None,
                 "market_status_valid_until_utc": None,
                 "snapshot_version": self._version(),
@@ -70,6 +74,9 @@ class MarketService:
     def _touch_lease_locked(self, symbol: str, now: float, client_id: str | None,
                             active: bool | None, activity_seq: int | None) -> None:
         if client_id:
+            tracked = self._leases.keys() | self._client_sequences.keys()
+            if client_id not in tracked and len(tracked) >= MAX_TRACKED_CLIENTS:
+                raise ClientCapacityError("当前访问会话较多，请稍后重试")
             if activity_seq is not None:
                 previous = self._client_sequences.get(client_id)
                 if previous is None or activity_seq > previous[0]:
@@ -344,6 +351,10 @@ class MarketService:
                 if symbol not in self._active_symbols_locked(self.monotonic()): continue
                 self._last_was_nocache = chosen[2]
             self.refresh(symbol)
+
+    def prepare_start(self) -> None:
+        """Called only after the runtime owns the collector process lock."""
+        self._stop.clear()
 
     def stop(self) -> None:
         self._stop.set()

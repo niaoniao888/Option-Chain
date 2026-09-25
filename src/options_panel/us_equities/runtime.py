@@ -41,12 +41,14 @@ class UsEquitiesRuntime:
         lock = ProcessLock(self.data_dir.parent / "collector.lock")
         try:
             lock.acquire()
+            self.market.prepare_start()
             thread = threading.Thread(target=self.market.run, name="us-equities-refresh", daemon=True)
             thread.start()
         except Exception as exc:
             lock.release()
             self._startup_error = f"{type(exc).__name__}: {exc}"
             return
+        self._startup_error = None
         self._collector_lock = lock
         self._thread = thread
 
@@ -88,6 +90,7 @@ class UsEquitiesRuntime:
             "status": status,
             "source": getattr(self.adapter, "source_name", "Alpaca"),
             "configured": configured,
+            "writable": False,
             "collector_enabled": self.collector_enabled,
             "collector_running": collector_running,
             "refresh_policy": public_refresh_policy(),

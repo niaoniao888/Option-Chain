@@ -32,3 +32,7 @@
 - 公开 PC/手机均只读；维护说明请编辑仓库内容。原本机 PC 编辑仍留在旧项目。
 - 子路径、同源嵌入、Host 白名单、GZip、短响应缓存、部署文件为交接版新增。
 - 不改变收益、概率、Bid 异常提示、红涨绿跌、筛选/选择持久化的业务口径。
+
+## 2.1.0 美股整合
+
+旧美股根目录业务 Python 文件迁到 `src/options_panel/us_equities/`，改为包内导入；原 static 迁到 `web/us-equities/`。旧 PC writer / mobile gateway 不迁入，以 FastAPI 只读 API 与独立 admin 替代。主项目不依赖旧路径。仅私有运行数据按 [美股迁移步骤](US-EQUITIES.md) 复制，旧文件保留。

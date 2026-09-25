@@ -13,10 +13,10 @@ if errorlevel 1 (
 )
 set "PYTHONPATH=%~dp0src"
 if not defined OPTIONS_APP_ROOT set "OPTIONS_APP_ROOT=%~dp0"
-"%PANEL_PYTHON%" -m options_panel --open %*
+"%PANEL_PYTHON%" -m options_panel.us_equities.admin %*
 if errorlevel 1 goto failed
 exit /b 0
 :failed
-echo Startup failed. Check Python, network, or whether port 8780 is already in use.
+echo Local administration failed. Check Python dependencies and port availability.
 pause
 exit /b 1

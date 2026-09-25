@@ -2,7 +2,7 @@
 
 ## 运行模型
 
-一个进程、一个 Uvicorn worker、一个 BTC 采集器、一个内存快照。网页访客共用缓存。不需要数据库，也不依赖 GPT。现有 Windows 预览和目标 Linux 服务器是两套独立环境；不能把 Windows `.venv` 复制到 Linux。
+一个主进程、一个 Uvicorn worker；BTC 和美股各有独立采集器及内存缓存。网页访客共用缓存。不需要数据库，也不依赖 GPT。现有 Windows 预览和目标 Linux 服务器是两套独立环境；不能把 Windows `.venv` 复制到 Linux。
 
 ## 配置
 
@@ -19,6 +19,10 @@ Python 从操作系统环境变量读取配置，不会自动读取 `.env`。`.e
 | `OPTIONS_RUNTIME_DIR` | `<项目>/runtime`，进程锁和本机运行资料 |
 | `OPTIONS_LOG_DIR` | `<runtime>/logs` |
 | `OPTIONS_COLLECTOR_ENABLED` | `true`；false 仅适合测试/离线检查，不代表共享旧实例的行情 |
+| `OPTIONS_US_DATA_DIR` | `<runtime>/us-equities/data`，真实自选和个人说明，不提交 |
+| `OPTIONS_US_COLLECTOR_ENABLED` | `true`；仅开关美股采集 |
+| `OPTIONS_BITCOIN_COLLECTOR_ENABLED` | `true`；仅开关 BTC 采集 |
+| `ALPACA_API_KEY` / `ALPACA_API_SECRET` | 成对注入；未设置时 Windows 尝试当前用户 DPAPI，其他系统待配置 |
 | `OPTIONS_FORWARDED_HEADERS` | `false`；启用时 CLI 仅信任来自 127.0.0.1 的代理头 |
 
 启动参数 `--host`、`--port`、`--base-path` 优先于环境变量。`--open` 打开本机浏览器。不要在生产使用自动重载或多个 worker。
@@ -64,7 +68,7 @@ $env:OPTIONS_ALLOWED_HOSTS = '127.0.0.1,localhost,192.168.2.2'
 .\scripts\start.ps1 --host 0.0.0.0 --port 8780
 ```
 
-同一网络手机访问 `http://电脑局域网IP:8780/bitcoin/mobile/`。如防火墙阻止，由电脑管理员按实际私有网络配置。该示例不会自动添加防火墙规则，也不是公网发布方式。旧版 8766/8768 不受影响。
+同一网络手机访问 `http://电脑局域网IP:8780/bitcoin/mobile/`。如防火墙阻止，由电脑管理员按实际私有网络配置。该示例不会自动添加防火墙规则，也不是公网发布方式。本任务不使用此示例修改当前监听；局域网发布由独立任务维护。
 
 ## 日志与排错
 
@@ -93,3 +97,9 @@ $env:OPTIONS_ALLOWED_HOSTS = '127.0.0.1,localhost,192.168.2.2'
 4. 检查 healthz、readyz、PC/手机、错误日志。失败则退回上一版源码/镜像；不要删除运行数据卷。
 
 缓存重启后重新获取；说明文件需随版本保留。扩展多个服务器时，先设计外置共享快照及单独采集职责，当前文件锁不解决跨机器协调。
+
+## 美股部署补充
+
+详见 [US-EQUITIES.md](US-EQUITIES.md)。Compose 已声明可选的 Alpaca 环境透传；将两个变量成对配置在宿主安全环境或不提交的 `.env` 中，重新创建容器后生效。不要在命令参数、日志或源码中填写凭据。默认不配置时 BTC 仍可用。DPAPI 文件不能复制给 Linux 使用。
+
+`/readyz` 保持 BTC 兼容语义；单独监控美股 `/api/v1/us-equities/health` 的 `status/collector_running` 和快照的 `fetch_health/fetched_age_seconds`。本机管理不要加入 Nginx upstream、容器公网端口或公开路由。实例默认说明和自选可被所有获准访问主面板的访客读取；公网环境应使用经过审核的独立数据目录，必要时由宿主网站加身份认证。Alpaca 行情再分发授权未在本轮落实。

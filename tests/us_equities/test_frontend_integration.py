@@ -53,6 +53,29 @@ process.stdout.write(JSON.stringify({desktop,mobile,remembered:h.resolvedSymbol(
         self.assertIn('"If-Match":guideDocument.revision', admin)
         self.assertIn('error.status===409', admin)
 
+    def test_metadata_failure_keeps_complete_snapshot_and_recovers(self):
+        result = self.run_node(r'''
+const vm=require("vm"),fs=require("fs"),ctx={module:{exports:{}},console};vm.createContext(ctx);
+vm.runInContext(fs.readFileSync("./web/us-equities/app.js","utf8"),ctx);
+vm.runInContext(`state.initialized=true;state.symbol="GOOG";state.watchlist=["GOOG"];state.watchRevision="w1";state.sourceSnapshot={contracts:[{contract_symbol:"saved"}]};let calls=0;let failing=true;jsonFetch=async path=>{if(failing)throw new Error("temporary metadata timeout");return path.includes("watchlist")?{symbols:["GOOG"],revision:"w1"}:{};};loadSnapshot=async()=>{calls++};schedulePoll=()=>{};emptySnapshot=()=>{throw new Error("snapshot cleared")};`,ctx);
+(async()=>{await vm.runInContext("pollLoop()",ctx);const failed=vm.runInContext("({rows:state.sourceSnapshot.contracts.length,warning:!!state.metadataError,calls})",ctx);vm.runInContext("failing=false",ctx);await vm.runInContext("pollLoop()",ctx);const recovered=vm.runInContext("({rows:state.sourceSnapshot.contracts.length,warning:!!state.metadataError,calls})",ctx);process.stdout.write(JSON.stringify({failed,recovered}));})();
+''')
+        self.assertEqual(result["failed"], {"rows": 1, "warning": True, "calls": 1})
+        self.assertEqual(result["recovered"], {"rows": 1, "warning": False, "calls": 2})
+
+    def test_guide_sync_is_single_flight_timeout_and_recovers(self):
+        result = self.run_node(r'''
+const nodes=new Map(),listeners={},timers=[],intervals=[];let calls=0,pending;
+const element=()=>({textContent:"",firstChild:null,dataset:{},querySelectorAll:()=>[],contains:()=>false,appendChild(){},classList:{contains:()=>false}});
+global.document={hidden:false,getElementById:id=>{if(!nodes.has(id))nodes.set(id,element());return nodes.get(id)},addEventListener:(name,fn)=>listeners[name]=fn};
+global.window={matchMedia:()=>({matches:false}),getSelection:()=>null,addEventListener:(name,fn)=>listeners[name]=fn};global.localStorage={getItem:()=>null};
+global.setTimeout=fn=>{timers.push(fn);return timers.length};global.clearTimeout=()=>{};global.setInterval=fn=>{intervals.push(fn)};
+global.fetch=(_url,options)=>{calls++;return new Promise((resolve,reject)=>{pending=resolve;options.signal.addEventListener("abort",()=>reject(Object.assign(new Error("aborted"),{name:"AbortError"})))})};
+require("./web/us-equities/guide.js");
+(async()=>{intervals[0]();listeners["us-guide-visible"]();const overlappingCalls=calls;timers[0]();await new Promise(setImmediate);const timeoutNotice=nodes.get("guideMessage").textContent;intervals[0]();pending({ok:true,json:async()=>({revision:"new",sections:[],updated_at:"built-in"})});await new Promise(setImmediate);process.stdout.write(JSON.stringify({overlappingCalls,calls,timeout:timeoutNotice.includes("超时"),recovered:nodes.get("guideMeta").textContent.includes("内置初稿")}));})();
+''')
+        self.assertEqual(result, {"overlappingCalls": 1, "calls": 2, "timeout": True, "recovered": True})
+
     def test_shared_theme_key_and_market_tabs(self):
         for path in (ROOT / "web" / "desktop" / "app.js", ROOT / "web" / "mobile" / "mobile.js", WEB / "app.js"):
             self.assertIn("options-panel-theme", path.read_text(encoding="utf-8"))

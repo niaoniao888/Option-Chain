@@ -422,7 +422,7 @@ class AlpacaAdapter:
 
     def _validated_client(self) -> AlpacaHttp:
         credentials = self._credentials()
-        if credentials is None: raise AuthorizationRequired("尚未配置并验证 Alpaca Paper 凭据；请双击配置入口")
+        if credentials is None: raise AuthorizationRequired("待配置 Alpaca 凭据，请参阅项目配置说明")
         if self._validated != credentials:
             self._metadata.clear()
             result = self._probe(*credentials)

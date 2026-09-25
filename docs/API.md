@@ -64,3 +64,20 @@ POST / PUT / PATCH / DELETE 均返回 405，不提供写接口。没有开启跨
 服务重启后内存清空。数据失败时 API 仍可能返回 200 的旧快照，所以调用方必须检查 `status.stale` 和 `fetched_at`，不能只看 HTTP 200。
 
 说明结构为 `{revision, updated_at, sections: [{id, title, topics: [{id, title, body}]}]}`。正文通过安全文本渲染，不执行任意 HTML。前端读说明；维护人员在仓库改 JSON，经测试后发布。
+
+## 美股 v1（2.1.0）
+
+所有路径可加 OPTIONS_BASE_PATH。主服务全部只读，POST/PUT/DELETE 均返回 405。
+
+| GET | 返回 |
+| --- | --- |
+| `/api/v1/us-equities/health` | configured、collector_running、status、refresh_policy、writable=false |
+| `/api/v1/us-equities/watchlist` | symbols、revision |
+| `/api/v1/us-equities/options-guide` | sections、revision、updated_at |
+| `/api/v1/us-equities/snapshot?symbol=GOOG` | 独立美股快照 |
+
+快照必须提供唯一 symbol 且属于该实例自选；if_version 可传上一版本。版本不变时 unchanged=true 且不发送 contracts，前端必须保留原合约数组，并按新状态更新过期/排行资格。client_id 为每个页面独立的 1–64 位标识；active=1 续租、active=0 释放；activity_seq 单调增加以抵抗乱序。最多跟踪 2048 个短期会话，超限新会话返回 429 和 Retry-After:15。此容量保护不替代公开网站反代限流。
+
+美股字段包含 underlying_price、market_status、quote_time、fetched_at、calculated_at、fetch_health、mode、snapshot_version。合约字段以 us_equities/model.py 为准，包含 annualized_pct、period_return_pct、capital_base、time_value、calculation_basis_utc、exercise_probability_pct、probability_reason、ranking_eligible、close_reference_eligible 等。不得把 BTC index_price/markIV 等字段强行映射成同一含义。
+
+本机管理 API 在另一回环进程，路径为 /api/watchlist 和 /api/options-guide。全部管理 GET 也需 Authorization:Bearer；POST/DELETE 自选与 PUT 说明需 If-Match、同源 Origin/Host 和 JSON Content-Type。409 表示版本冲突，不可直接重试覆盖。主服务不注册这些写路由，管理静态资源也不可从主服务读取。

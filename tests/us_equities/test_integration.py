@@ -82,6 +82,16 @@ class IntegrationTests(unittest.TestCase):
             us_module = client.get("/panel/api/v1/modules").json()[1]
             self.assertEqual(us_module["desktop_path"], "/panel/us-equities/desktop/")
 
+    def test_client_capacity_returns_retryable_status(self):
+        with TestClient(create_app(self.settings(), DashboardState())) as client:
+            with mock.patch("options_panel.us_equities.market_service.MAX_TRACKED_CLIENTS", 1):
+                first = client.get("/api/v1/us-equities/snapshot?symbol=SPCX&client_id=one&activity_seq=1")
+                self.assertEqual(first.status_code, 200)
+                full = client.get("/api/v1/us-equities/snapshot?symbol=SPCX&client_id=two&activity_seq=1")
+                self.assertEqual(full.status_code, 429)
+                self.assertEqual(full.headers["Retry-After"], "15")
+                self.assertEqual(client.get("/api/v1/bitcoin/health").status_code, 200)
+
     def test_bad_us_data_isolated_from_bitcoin(self):
         self.data_dir.mkdir(parents=True)
         (self.data_dir / "watchlist.json").write_text("{bad", encoding="utf-8")

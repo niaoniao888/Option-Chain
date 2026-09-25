@@ -1,7 +1,7 @@
 services:
   options-panel:
     build: .
-    image: options-panel:2.0.0
+    image: options-panel:2.1.0
     restart: unless-stopped
     init: true
     ports:
@@ -9,6 +9,9 @@ services:
     environment:
       OPTIONS_BASE_PATH: "${OPTIONS_BASE_PATH:-/options}"
       OPTIONS_ALLOWED_HOSTS: "${OPTIONS_ALLOWED_HOSTS:-127.0.0.1,localhost}"
+      # Bare values inherit configured host/Compose environment; unset keys are omitted.
+      ALPACA_API_KEY:
+      ALPACA_API_SECRET:
     volumes:
       - panel-runtime:/app/runtime
     read_only: true

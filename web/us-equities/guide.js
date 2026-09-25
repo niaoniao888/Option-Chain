@@ -5,7 +5,7 @@
   const base=()=>{const match=(globalThis.location?.pathname||"").match(/^(.*)\/us-equities\/(?:desktop|mobile)\//);return match?match[1]:""};
   const mobile=()=>/\/us-equities\/mobile\/$/.test(globalThis.location?.pathname||"")||window.matchMedia?.("(max-width: 700px)").matches===true;
   const content=document.getElementById("guideContent"),meta=document.getElementById("guideMeta"),message=document.getElementById("guideMessage"),key="us-options-mobile-guide-open";
-  let currentRevision=null,pendingPayload=null;
+  let currentRevision=null,pendingPayload=null,loading=false,controller=null;
   const remembered=()=>{try{return localStorage.getItem(key)}catch(_){return null}};
   const remember=value=>{try{value?localStorage.setItem(key,value):localStorage.removeItem(key)}catch(_){}};
   const clear=node=>{while(node.firstChild)node.removeChild(node.firstChild)};
@@ -19,20 +19,24 @@
     message.textContent="公开面板只读；维护请使用本机管理页。";
   }
   async function load(showProgress=false){
+    if(loading||document.hidden)return;
+    loading=true;controller=new AbortController();
+    const timer=setTimeout(()=>controller?.abort(),4500);
     if(showProgress)message.textContent="正在读取个人文档…";
     try{
-      const response=await fetch(`${base()}/api/v1/us-equities/options-guide`,{cache:"no-store"});
+      const response=await fetch(`${base()}/api/v1/us-equities/options-guide`,{cache:"no-store",signal:controller.signal});
       const payload=await response.json();
       if(!response.ok)throw new Error(payload.error||`HTTP ${response.status}`);
       if(payload.revision===currentRevision){message.textContent="公开面板只读；维护请使用本机管理页。";return}
       if(selecting()){pendingPayload=payload;message.textContent="说明已更新；结束文字选择后自动显示最新版。";return}
       render(payload);
-    }catch(error){message.textContent=`个人文档读取失败：${error.message}`}
+    }catch(error){if(!document.hidden)message.textContent=`个人文档读取失败：${error.name==="AbortError"?"请求超时，请稍后重试":error.message}`}
+    finally{clearTimeout(timer);controller=null;loading=false}
   }
   document.getElementById("guideRefresh").onclick=()=>load(true);
   document.addEventListener("selectionchange",()=>{if(pendingPayload&&!selecting())render(pendingPayload)});
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden)load()});
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)controller?.abort();else load()});
   window.addEventListener("us-guide-visible",()=>load());
-  setInterval(()=>{if(!document.hidden)load()},5000);
+  setInterval(()=>{if(document.hidden)controller?.abort();else load()},5000);
   load(true);
 })();

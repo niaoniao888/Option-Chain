@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = (
     "README.md", "CONTRIBUTING.md", "CHANGELOG.md", "pyproject.toml",
     "requirements.txt", "requirements.lock", "requirements-dev.lock",
-    "start-panel.cmd", "Dockerfile", "compose.yaml", ".env.example",
+    "start-panel.cmd", "start-admin.cmd", "Dockerfile", "compose.yaml", ".env.example",
     ".gitignore", ".dockerignore",
 )
 SOURCE_DIRS = ("src", "web", "content", "tests", "scripts", "docs", "deploy", ".github")
@@ -45,9 +45,9 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=ROOT / "dist")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    archive = args.output / "options-panel-2.0.0.zip"
+    archive = args.output / "options-panel-2.1.0.zip"
     files = source_files()
-    manifest = {"version": "2.0.0", "created_at": datetime.now(timezone.utc).isoformat(), "files": []}
+    manifest = {"version": "2.1.0", "created_at": datetime.now(timezone.utc).isoformat(), "files": []}
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
         for path in files:
             relative = path.relative_to(ROOT).as_posix()

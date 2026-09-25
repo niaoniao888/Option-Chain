@@ -21,6 +21,7 @@ from options_panel.runtime.refresher import ProcessLock, Refresher
 from options_panel.runtime.snapshot import DashboardState
 from options_panel.us_equities.guide_store import GuideError as UsGuideError
 from options_panel.us_equities.runtime import UsEquitiesRuntime
+from options_panel.us_equities.market_service import ClientCapacityError
 from options_panel.us_equities.watchlist_store import normalize_symbol
 
 _HELD_COLLECTOR_LOCKS: list[ProcessLock] = []
@@ -228,13 +229,18 @@ def create_app(settings: Settings | None = None, state: DashboardState | None = 
                 not re.fullmatch(r"\d{1,16}", sequences[0]) or int(sequences[0]) > 9007199254740991)):
             return JSONResponse({"error": "activity_seq 无效"}, status_code=400)
         active = active_values[0] == "1" if active_values else None
-        return JSONResponse(us_runtime.market.snapshot(
-            symbol,
-            if_version=versions[0] if versions else None,
-            client_id=clients[0] if clients else None,
-            active=active,
-            activity_seq=int(sequences[0]) if sequences else None,
-        ), headers={"Cache-Control": "no-store"})
+        try:
+            payload = us_runtime.market.snapshot(
+                symbol,
+                if_version=versions[0] if versions else None,
+                client_id=clients[0] if clients else None,
+                active=active,
+                activity_seq=int(sequences[0]) if sequences else None,
+            )
+        except ClientCapacityError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=429,
+                                headers={"Retry-After": "15", "Cache-Control": "no-store"})
+        return JSONResponse(payload, headers={"Cache-Control": "no-store"})
 
     @app.get(p("/healthz"))
     def healthz(): return {"status": "alive", "version": APP_VERSION}

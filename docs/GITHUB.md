@@ -56,4 +56,4 @@ git push -u origin main
 
 ## 交接给团队的话
 
-> 项目后端是 Python/FastAPI/Uvicorn，前端是原生 HTML/CSS/JS。请先看 README、docs/ARCHITECTURE.md 和 docs/OPERATIONS.md。公开服务只读，当前一个 worker 共用行情缓存；可挂在网站 /options/ 子路径。BTC 已实现，美股的扩展边界见 docs/EXTENDING.md。实际测试和未验证项见 docs/ACCEPTANCE.md。
+> 项目后端是 Python/FastAPI/Uvicorn，前端是原生 HTML/CSS/JS。请先看 README、docs/ARCHITECTURE.md 和 docs/OPERATIONS.md。公开服务只读，当前一个 worker 共用行情缓存；可挂在网站 /options/ 子路径。BTC 与 Alpaca 美股均已实现；配置见 docs/US-EQUITIES.md，扩展边界见 docs/EXTENDING.md。实际测试和未验证项见 docs/ACCEPTANCE.md。
