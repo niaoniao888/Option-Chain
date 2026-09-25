@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -18,6 +19,9 @@ from options_panel.modules.bitcoin import BitcoinModule
 from options_panel.modules.registry import public_modules
 from options_panel.runtime.refresher import ProcessLock, Refresher
 from options_panel.runtime.snapshot import DashboardState
+from options_panel.us_equities.guide_store import GuideError as UsGuideError
+from options_panel.us_equities.runtime import UsEquitiesRuntime
+from options_panel.us_equities.watchlist_store import normalize_symbol
 
 _HELD_COLLECTOR_LOCKS: list[ProcessLock] = []
 
@@ -43,6 +47,10 @@ def create_app(settings: Settings | None = None, state: DashboardState | None = 
     dashboard = state or DashboardState()
     guide = GuideStore(settings.data_dir / "options-guide.json")
     module = BitcoinModule(dashboard, guide)
+    us_runtime = UsEquitiesRuntime(
+        settings.us_data_dir,
+        collector_enabled=settings.collector_enabled and settings.us_collector_enabled,
+    )
     snapshot_cache = SnapshotResponseCache(dashboard)
 
     @asynccontextmanager
@@ -50,16 +58,19 @@ def create_app(settings: Settings | None = None, state: DashboardState | None = 
         configure_logging(settings.log_dir)
         app.state.bitcoin = module
         app.state.settings = settings
+        app.state.us_equities = us_runtime
         lock = None
         refresher = None
-        if settings.collector_enabled:
+        if settings.collector_enabled and settings.bitcoin_collector_enabled:
             lock = ProcessLock(settings.runtime_dir / "collector.lock")
             lock.acquire()
             refresher = Refresher(dashboard)
             refresher.start()
+        us_runtime.start()
         try:
             yield
         finally:
+            us_runtime.stop()
             if refresher is not None:
                 refresher.stop_event.set()
                 refresher.join(timeout=15)
@@ -130,6 +141,21 @@ def create_app(settings: Settings | None = None, state: DashboardState | None = 
     def shared_asset(name: str):
         return file(settings.web_dir / "shared" / name) if name in {"guide.js", "guide.css", "period-return.js", "period-return.css"} else JSONResponse({"error": "静态资源不存在"}, status_code=404)
 
+    @app.get(p("/us-equities/desktop"))
+    def us_desktop_redirect(): return RedirectResponse(p("/us-equities/desktop/"), status_code=308)
+
+    @app.get(p("/us-equities/mobile"))
+    def us_mobile_redirect(): return RedirectResponse(p("/us-equities/mobile/"), status_code=308)
+
+    @app.get(p("/us-equities/desktop/"))
+    @app.get(p("/us-equities/mobile/"))
+    def us_page(): return file(settings.web_dir / "us-equities" / "index.html")
+
+    @app.get(p("/us-equities/desktop/{name}"))
+    @app.get(p("/us-equities/mobile/{name}"))
+    def us_asset(name: str):
+        return file(settings.web_dir / "us-equities" / name) if name in {"app.js", "style.css", "guide.js"} else JSONResponse({"error": "静态资源不存在"}, status_code=404)
+
     @app.get(p("/api/v1/modules"))
     def modules(): return public_modules(base)
 
@@ -149,6 +175,62 @@ def create_app(settings: Settings | None = None, state: DashboardState | None = 
     def options_guide():
         try: return JSONResponse(guide.get(), headers={"Cache-Control": "no-store"})
         except GuideError as exc: return JSONResponse({"error": str(exc)}, status_code=503)
+
+    @app.get(p("/api/v1/us-equities/health"))
+    def us_health():
+        return JSONResponse(us_runtime.health(), headers={"Cache-Control": "no-store"})
+
+    @app.get(p("/api/v1/us-equities/watchlist"))
+    def us_watchlist():
+        try:
+            return JSONResponse(us_runtime.watchlist.get(), headers={"Cache-Control": "no-store"})
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=503)
+
+    @app.get(p("/api/v1/us-equities/options-guide"))
+    def us_options_guide():
+        try:
+            return JSONResponse(us_runtime.guide.get(), headers={"Cache-Control": "no-store"})
+        except UsGuideError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=503)
+
+    @app.get(p("/api/v1/us-equities/snapshot"))
+    def us_snapshot(request: Request):
+        query = request.query_params
+        values = query.getlist("symbol")
+        if len(values) != 1:
+            return JSONResponse({"error": "必须指定唯一 symbol"}, status_code=400)
+        try:
+            symbol = normalize_symbol(values[0])
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        try:
+            if symbol not in us_runtime.watchlist.list():
+                return JSONResponse({"error": "symbol 不在自选列表"}, status_code=404)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=503)
+        versions = query.getlist("if_version")
+        if len(versions) > 1 or (versions and (not versions[0] or len(versions[0]) > 96)):
+            return JSONResponse({"error": "if_version 无效"}, status_code=400)
+        clients, active_values = query.getlist("client_id"), query.getlist("active")
+        if len(clients) > 1 or (clients and not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", clients[0])):
+            return JSONResponse({"error": "client_id 无效"}, status_code=400)
+        if len(active_values) > 1 or (active_values and active_values[0] not in {"0", "1"}):
+            return JSONResponse({"error": "active 无效"}, status_code=400)
+        sequences = query.getlist("activity_seq")
+        if (active_values or sequences) and not clients:
+            return JSONResponse({"error": "active/activity_seq 必须与 client_id 同时使用"}, status_code=400)
+        if len(sequences) > 1 or (sequences and (
+                not re.fullmatch(r"\d{1,16}", sequences[0]) or int(sequences[0]) > 9007199254740991)):
+            return JSONResponse({"error": "activity_seq 无效"}, status_code=400)
+        active = active_values[0] == "1" if active_values else None
+        return JSONResponse(us_runtime.market.snapshot(
+            symbol,
+            if_version=versions[0] if versions else None,
+            client_id=clients[0] if clients else None,
+            active=active,
+            activity_seq=int(sequences[0]) if sequences else None,
+        ), headers={"Cache-Control": "no-store"})
 
     @app.get(p("/healthz"))
     def healthz(): return {"status": "alive", "version": APP_VERSION}

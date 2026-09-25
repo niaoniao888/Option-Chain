@@ -7,7 +7,14 @@ MODULES = ({
     "desktop_path": "/bitcoin/desktop/",
     "mobile_path": "/bitcoin/mobile/",
     "provider": "Binance Options",
-},)
+}, {
+    "id": "us-equities",
+    "title": "美股期权面板",
+    "status": "available",
+    "desktop_path": "/us-equities/desktop/",
+    "mobile_path": "/us-equities/mobile/",
+    "provider": "Alpaca IEX / Indicative",
+})
 
 
 def public_modules(base_path: str = "") -> list[dict[str, str]]:

@@ -37,6 +37,8 @@ class Settings:
     port: int = 8780
     base_path: str = ""
     collector_enabled: bool = True
+    bitcoin_collector_enabled: bool = True
+    us_collector_enabled: bool = True
     allowed_hosts: tuple[str, ...] = ("127.0.0.1", "localhost", "testserver")
     forwarded_headers: bool = False
 
@@ -57,6 +59,10 @@ class Settings:
         return Path(os.getenv("OPTIONS_RUNTIME_DIR", str(self.app_root / "runtime")))
 
     @property
+    def us_data_dir(self) -> Path:
+        return Path(os.getenv("OPTIONS_US_DATA_DIR", str(self.runtime_dir / "us-equities" / "data")))
+
+    @property
     def log_dir(self) -> Path:
         return Path(os.getenv("OPTIONS_LOG_DIR", str(self.runtime_dir / "logs")))
 
@@ -71,6 +77,8 @@ class Settings:
             port=int(os.getenv("OPTIONS_PORT", "8780")),
             base_path=normalize_base_path(os.getenv("OPTIONS_BASE_PATH", "")),
             collector_enabled=_boolean("OPTIONS_COLLECTOR_ENABLED", True),
+            bitcoin_collector_enabled=_boolean("OPTIONS_BITCOIN_COLLECTOR_ENABLED", True),
+            us_collector_enabled=_boolean("OPTIONS_US_COLLECTOR_ENABLED", True),
             allowed_hosts=allowed or ("127.0.0.1", "localhost"),
             forwarded_headers=_boolean("OPTIONS_FORWARDED_HEADERS", False),
         )
