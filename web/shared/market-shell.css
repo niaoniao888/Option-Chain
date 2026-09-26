@@ -100,3 +100,6 @@ body:not(.us-market) #expiryRange button[aria-pressed="true"],.us-market #termBu
   .us-market #rankingView .ranking-table,.us-market #rankingView .ranking-table th,.us-market #rankingView .ranking-table td,.us-market #rankingView .ranking-table .quote-detail summary{font-size:clamp(10.5px,2.7vw,15px)}
   .us-market #rankingView .ranking-table th button{height:auto;min-height:0;padding:1px;font-size:inherit;font-weight:800}
 }
+
+/* Quote metrics are readable values, without expandable contract details. */
+.us-market .quote-value{display:block;color:var(--brand);font-size:inherit;font-weight:400;cursor:text}

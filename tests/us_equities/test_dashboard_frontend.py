@@ -6,12 +6,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 class FrontendHelperTests(unittest.TestCase):
-    def test_detail_body_is_lazy_and_escapes_current_values(self):
+    def test_quote_values_have_no_expandable_details(self):
         script = r'''
 const assert=require('assert'),h=require('./web/us-equities/app.js');
 const first={contract_symbol:'<old>',bid:1,ask:2,contract_metadata:{metadata_fetched_at:'2026-09-25T00:00:00Z',deliverables:[{symbol:'<tag>'}]}};
 const closed=h.detail(first,'chain:<old>','<b>summary</b>');
-assert(closed.includes('<summary'));assert(!closed.includes('detail-body'));assert(!closed.includes('Bid / Ask'));
+assert(closed.includes('<span class="quote-value'));assert(!closed.includes('<details'));assert(!closed.includes('<summary'));assert(!closed.includes('data-contract-symbol'));assert(!closed.includes('detail-body'));assert(!closed.includes('Bid / Ask'));
 const updated={...first,contract_symbol:'<new>',bid:3,contract_metadata:{...first.contract_metadata,multiplier:'<script>'}};
 const body=h.detailBodyHtml(updated);
 assert(body.includes('&lt;new&gt;'));assert(body.includes('&lt;script&gt;'));assert(body.includes('合约资料获取'));assert(!body.includes('<script>'));
