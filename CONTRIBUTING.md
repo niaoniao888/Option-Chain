@@ -7,7 +7,8 @@
 5. 修改文件后运行 Python 和 Node 测试。Windows 用 `scripts/test.ps1`；Linux 命令见下。
 6. 页面改动须用真实浏览器检查。测试夹具通过不能代替 HTML/脚本组合、样式、窄屏和刷新恢复的实际验证。
 7. 变更接口、配置或模块边界时同步 docs。依赖升级更新 lock，并记录 Python/框架版本与复测结果。
-8. 日志、快照、密钥、真实 `.env`、虚拟环境不提交。`/runtime/` 的忽略规则必须保持根目录限定，不能误忽略 `src/options_panel/runtime/`。
+8. 界面以 BTC 为默认基准；新增市场或调整通用控件先阅读 [统一界面规范](docs/UI-STANDARDS.md)，复用共享样式并跨市场验收。
+9. 日志、快照、密钥、真实 `.env`、虚拟环境不提交。`/runtime/` 的忽略规则必须保持根目录限定，不能误忽略 `src/options_panel/runtime/`。
 
 ```sh
 export PYTHONPATH="$PWD/src"

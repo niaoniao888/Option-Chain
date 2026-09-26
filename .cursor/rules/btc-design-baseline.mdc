@@ -1,0 +1,10 @@
+---
+description: BTC is the default visual baseline for all options market modules
+alwaysApply: true
+---
+
+# BTC 默认视觉基准
+
+遵守仓库根目录 AGENTS.md 和 docs/UI-STANDARDS.md。
+所有市场共用 BTC 的通用视觉规范，特色业务内容单独实现。
+例如调整 Call/Put 按钮，应修改共享样式并验证 BTC/美股两端，不能在新模块复制另一套固定字号和按钮高度。

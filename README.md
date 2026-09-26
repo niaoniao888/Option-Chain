@@ -14,7 +14,7 @@
 | --- | --- |
 | 使用者：打开看板、交给朋友 | 本 README、[GitHub 与压缩包交接](docs/GITHUB.md) |
 | 接手工程师：理解设计及迁移范围 | [架构](docs/ARCHITECTURE.md)、[技术选型](docs/STACK.md)、[迁移映射](docs/MIGRATION.md) |
-| 前端工程师：接入现有网站 | [接口契约](docs/API.md)、[集成与部署](docs/OPERATIONS.md) |
+| 前端工程师：接入现有网站 | [统一界面规范：BTC 默认基准](docs/UI-STANDARDS.md)、[接口契约](docs/API.md)、[集成与部署](docs/OPERATIONS.md) |
 | 金融功能维护：计算含义 | [计算口径](docs/CALCULATIONS.md) |
 | 美股配置 / 增加更多市场 | [美股模块](docs/US-EQUITIES.md)、[模块扩展](docs/EXTENDING.md) |
 | 测试和上线负责人 | [验收记录与限制](docs/ACCEPTANCE.md)、[贡献约定](CONTRIBUTING.md) |
