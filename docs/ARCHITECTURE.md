@@ -12,7 +12,7 @@ BTC 默认 provider 是 BinanceOptionsProvider，Refresher 保留原目录/行�
 
 RuntimeLifecycle 负责跨市场启停隔离和公开状态；每个 Runtime 内部复用 `CollectorSupervisor` 持有 ProcessLock、线程引用和 15 秒停止等待。BTC 的 Refresher 仍是原线程，US 仍以线程运行 MarketService，各自 run loop、刷新间隔和失败策略没有合并。线程工厂、启动、停止回调或 join 失败不会泄漏或提前释放锁；停止超时或回调异常时，监督器在进程级保留未终止所有者，即使 Runtime 被回收也继续持锁，确认线程结束后由后续 start/stop 安全清理且不保留已结束引用。
 
-BTC `DashboardState` 在首个代次前绑定 provider/source；已有数据不能换成另一来源标签。US `MarketService.health_summary()` 只读取顶层缓存、租约、队列、失败计数和年龄，不复制或重新投影 contracts。无活跃租约时数据状态为 `no_active`，不会因闲置缓存老化使 Runtime 永久异常；部分活跃标的已有数据而另一些仍在首轮等待时为 `partial`，不会误报全部健康。
+BTC `DashboardState` 在首个代次前绑定 provider/source；已有数据不能换成另一来源标签。装配同时验证 registration、Runtime descriptor 与 provider binding 的 market/provider 身份，失败只隔离对应市场。US `MarketService.health_summary()` 只读取顶层缓存、租约、队列、失败计数和年龄，不复制或重新投影 contracts。legacy 和 client_id 请求共用 128 个活跃 symbol 上限，刷新队列受同一上限约束，闲置缓存最多保留 10 个 symbol。无活跃租约时数据状态为 `no_active`，不会因闲置缓存老化使 Runtime 永久异常；部分活跃标的已有数据而另一些仍在首轮等待时为 `partial`，不会误报全部健康。
 
 结构化 JSON 日志轮转，刷新事件包含 market、provider、instrument、耗时、连续失败、数据年龄、队列等待、缓存规模和合约数。公共状态和日志只记录异常类型或布尔状态，不记录异常正文、凭据或带密钥 URL。
 
@@ -37,4 +37,4 @@ BTC `DashboardState` 在首个代次前绑定 provider/source；已有数据不�
 
 ## Linux 运维边界
 
-Compose 保持一个服务、一个 worker，容器根文件系统只读，只有 `/app/runtime` 命名卷可写。`scripts/options-panel.sh` 是 Linux 生命周期入口；`options_panel.manage` 只通过现有 WatchlistStore/GuideStore 离线读写个人文档，不装配 Runtime、采集器或 HTTP 路由。`options_panel.runtime_archive` 只归档四个允许的个人数据文件，恢复在停止状态执行并先完成完整校验。
+Compose 保持一个服务、一个 worker，容器根文件系统只读，只有 `/app/runtime` 命名卷可写。`scripts/options-panel.sh` 是 Linux 生命周期入口；`options_panel.manage` 只通过现有 WatchlistStore/GuideStore 离线读写个人文档，不装配 Runtime、采集器或 HTTP 路由。`options_panel.runtime_archive` 只归档四个允许的个人数据文件，恢复在停止状态执行并先完成完整校验；替换前复制原件到同卷 recovery 目录，跨文件失败时回滚，回滚失败则保留 recovery 供人工恢复。它不提供断电级事务保证。

@@ -13,6 +13,6 @@ class FrontendLogicTests(unittest.TestCase):
     def test_cross_symbol_sort_state_uses_current_object(self):
         result = self.run_module(r'''(async()=>{const state=await import(pathToFileURL(path.resolve('web/app/core/state.js')));const first=state.normalizeUi(),second=state.normalizeUi();state.applySort(first,'priceSort','annualized_pct');state.applySort(second,'priceSort','remaining_seconds');state.applySort(second,'rankSort','exercise_probability_pct');process.stdout.write(JSON.stringify({first:first.priceSort,second:second.priceSort,rank:second.rankSort}));})();''')
         self.assertEqual(result["first"], {"key": "annualized_pct", "direction": "desc"})
-        self.assertEqual(result["second"], {"key": "remaining_seconds", "direction": "asc"})
+        self.assertEqual(result["second"], {"key": "expiry_time", "direction": "asc"})
         self.assertEqual(result["rank"], {"key": "exercise_probability_pct", "direction": "desc"})
 if __name__ == "__main__": unittest.main()

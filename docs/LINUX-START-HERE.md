@@ -5,7 +5,7 @@
 ## 首次启动
 
 ```sh
-VERSION=2.1.0
+VERSION=2.1.1
 COMMIT=abcdef12  # 替换为 Release 标签末尾的 8 位 commit
 BUNDLE="options-panel-${VERSION}-g${COMMIT}"
 grep -E '(-linux\.tar\.gz|-FILE-MANIFEST\.json)$' "${BUNDLE}-SHA256SUMS.txt" | sha256sum -c -
@@ -59,7 +59,7 @@ docker compose exec options-panel python -m options_panel.manage guide import /t
 生产使用通过 CI 的 `linux-<version>-<shortsha>` Release 资产。`compose.yaml` 固定 project name 为 `options-panel`，`COMPOSE_PROJECT_NAME` 可在隔离测试中覆盖；生产不要改名，否则换源码目录后会得到另一套命名卷：
 
 ```sh
-VERSION=2.1.0
+VERSION=2.1.1
 COMMIT=abcdef12  # 替换为 Release 标签末尾的 8 位 commit
 BUNDLE="options-panel-${VERSION}-g${COMMIT}"
 grep -E '(-linux\.tar\.gz|-FILE-MANIFEST\.json)$' "${BUNDLE}-SHA256SUMS.txt" | sha256sum -c -

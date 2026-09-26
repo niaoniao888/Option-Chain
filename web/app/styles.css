@@ -752,6 +752,17 @@ footer a {
     min-height: 38px;
     font-size: clamp(11px, 2.85vw, 16px);
   }
+  .expiry-row > .picker > button {
+    gap: 4px;
+    padding-inline: 6px;
+  }
+  .expiry-row > .picker > button #expiryValue {
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .expiry-row > .picker > button span:last-child {
+    flex: 0 0 auto;
+  }
   .segments {
     padding: 2px;
     gap: 3px;

@@ -72,7 +72,7 @@ def fetch_json(path: str, timeout: float = REQUEST_TIMEOUT) -> Any:
             log_event(
                 logging.WARNING, "upstream_request", path=path, attempt=attempt,
                 duration_ms=round((time.monotonic() - started) * 1000, 1), result="retry" if will_retry else "failed",
-                exception_type=type(exc).__name__, reason=str(exc), recovered=False,
+                exception_type=type(exc).__name__, retryable=retryable, recovered=False,
             )
             if not will_retry:
                 raise

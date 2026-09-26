@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 APP_ID = "btc-options-panel"
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.1.1"
 API_ROOT = "https://eapi.binance.com"
 MARKET_INTERVAL = 60.0
 CATALOG_INTERVAL = 600.0

@@ -1,7 +1,9 @@
 import copy
 import concurrent.futures
 import http.client
+import io
 import json
+import logging
 import math
 import sys
 import tempfile
@@ -14,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import legacy_support as server
+from options_panel.logging import JsonFormatter
 
 
 class Clock:
@@ -356,13 +359,35 @@ class CacheTests(unittest.TestCase):
         self.assertFalse(refresher.refresh_market())
         self.assertEqual(self.state.market_fetched_at, fetched)
         self.assertEqual(self.state.quotes["BTC-X"]["bid"], 100.0)
-        self.assertIn("缺少", self.state.market_error)
+        self.assertEqual(self.state.market_error, "行情刷新失败，请稍后重试")
         ticker.append({"symbol":"BTC-Y","bidPrice":"95","askPrice":"96"})
         self.wall.value += 60
         self.mono.value += 60
         self.assertTrue(refresher.refresh_market())
         self.assertEqual(self.state.quotes["BTC-X"]["bid"], 110.0)
         self.assertIsNone(self.state.market_error)
+
+    def test_provider_exception_detail_never_reaches_bitcoin_snapshot(self):
+        secret = "token=FAKE-CREDENTIAL-123"
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(JsonFormatter())
+        server.LOGGER.addHandler(handler)
+        self.addCleanup(server.LOGGER.removeHandler, handler)
+
+        def fetch(_path):
+            raise RuntimeError(f"https://example.invalid/?{secret}")
+
+        refresher = server.Refresher(self.state, fetch)
+        self.assertFalse(refresher.refresh_market())
+        snapshot = self.state.snapshot()
+        self.assertNotIn(secret, json.dumps(snapshot, ensure_ascii=False))
+        self.assertEqual(
+            snapshot["status"]["market_error"],
+            "行情刷新失败，请稍后重试",
+        )
+        self.assertNotIn(secret, stream.getvalue())
+        self.assertIn('"exception_type":"RuntimeError"', stream.getvalue())
 
     def test_explicit_null_rows_are_complete(self):
         second = {"symbol":"BTC-Y","expiry_ms":2_000_000_000_000,"side":"PUT","strike":9000.0,"unit":1.0,"status":"TRADING"}
@@ -576,7 +601,10 @@ class CacheTests(unittest.TestCase):
         self.assertEqual(snapshot["index_price"], 10000.0)
         self.assertIsNone(snapshot["contracts"][0]["exercise_probability_pct"])
         self.assertEqual(snapshot["contracts"][0]["exercise_probability_unavailable_reason"], "mark_unavailable")
-        self.assertIn("mark timeout", snapshot["status"]["mark_warning"])
+        self.assertEqual(
+            snapshot["status"]["mark_warning"],
+            "行权概率参数刷新失败，请稍后重试",
+        )
         self.assertIsNone(snapshot["status"]["market_error"])
 
     def test_open_interest_fetch_merges_expirations_and_skips_expired(self):
@@ -629,7 +657,7 @@ class CacheTests(unittest.TestCase):
         self.assertFalse(refresher.refresh_market())
         self.assertEqual(state.market_fetched_at, fetched)
         self.assertEqual(state.open_interest, original_oi)
-        self.assertIn("openInterest", state.market_error)
+        self.assertEqual(state.market_error, "行情刷新失败，请稍后重试")
         oi_payload = [{"symbol":symbol,"sumOpenInterest":"2.5","timestamp":"1700000024000"}]
         calls.clear()
         self.assertTrue(refresher.refresh_market())

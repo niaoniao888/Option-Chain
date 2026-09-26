@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
+import path from "node:path";
 
 const now = Date.parse("2026-10-01T12:00:00Z");
 const btc = {
@@ -92,6 +93,23 @@ async function mockApi(page) {
   );
 }
 
+async function installVisibilityControl(page) {
+  await page.addInitScript(() => {
+    globalThis.__testHidden = false;
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => globalThis.__testHidden,
+    });
+  });
+}
+
+async function setPageHidden(page, hidden) {
+  await page.evaluate((value) => {
+    globalThis.__testHidden = value;
+    document.dispatchEvent(new Event("visibilitychange"));
+  }, hidden);
+}
+
 async function expectMobileTableFits(page, panel, tableSelector) {
   const geometry = await page
     .locator(`[data-panel="${panel}"] .table-wrap`)
@@ -120,23 +138,102 @@ async function expectMobileTableFits(page, panel, tableSelector) {
   }
 }
 
+async function expiryTriggerGeometry(page) {
+  return page.locator("#expiryTrigger").evaluate((button) => {
+    const value = button.querySelector("#expiryValue");
+    const arrow = button.querySelector("span:last-child");
+    const range = document.createRange();
+    range.selectNodeContents(value);
+    const textRects = [...range.getClientRects()];
+    const buttonRect = button.getBoundingClientRect();
+    const arrowRect = arrow.getBoundingClientRect();
+    return {
+      buttonWidth: buttonRect.width,
+      textLineCount: new Set(
+        textRects.map((rect) => Math.round(rect.top * 10) / 10),
+      ).size,
+      textRight: Math.max(...textRects.map((rect) => rect.right)),
+      arrowLeft: arrowRect.left,
+      arrowRight: arrowRect.right,
+      buttonRight: buttonRect.right,
+      whiteSpace: getComputedStyle(value).whiteSpace,
+    };
+  });
+}
+
+function expectExpiryTriggerFits(geometry) {
+  expect(geometry.buttonWidth).toBe(112);
+  expect(geometry.textLineCount).toBe(1);
+  expect(geometry.whiteSpace).toBe("nowrap");
+  expect(geometry.textRight).toBeLessThanOrEqual(geometry.arrowLeft);
+  expect(geometry.arrowRight).toBeLessThanOrEqual(geometry.buttonRight);
+}
+
+for (const market of ["bitcoin", "us-equities"]) {
+  for (const mode of ["desktop", "mobile"]) {
+    for (const theme of ["light", "dark"]) {
+      test(`fixed-data visual baseline ${market} ${mode} ${theme}`, async ({
+        page,
+      }) => {
+        await page.clock.install({ time: now });
+        await page.clock.pauseAt(now);
+        await page.setViewportSize({
+          width: mode === "mobile" ? 390 : 1280,
+          height: mode === "mobile" ? 844 : 900,
+        });
+        await mockApi(page);
+        await page.goto(`/${market}/${mode}/`);
+        await page.locator(`button[data-theme="${theme}"]`).click();
+        await expect(page.locator("#chainBody tr").first()).toBeVisible();
+        await expect(page.locator("#app")).toHaveScreenshot(
+          `${market}-${mode}-${theme}.png`,
+          {
+            animations: "disabled",
+            caret: "hide",
+            maxDiffPixelRatio: 0.01,
+          },
+        );
+      });
+    }
+  }
+}
+
 for (const market of ["bitcoin", "us-equities"]) {
   for (const mode of ["desktop", "mobile"]) {
     for (const width of mode === "mobile" ? [320, 390, 430] : [1280, 1920]) {
       test(`${market} ${mode} ${width}px responsive`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         await mockApi(page);
+        if (mode === "mobile") {
+          await page.route("**/styles.css", async (route) => {
+            const response = await route.fetch();
+            await route.fulfill({
+              response,
+              body: `${await response.text()}\n.font-stress #expiryTrigger { font-family: Arial, sans-serif; font-size: 16px; }`,
+            });
+          });
+        }
         await page.goto(`/${market}/${mode}/`);
         await expect(page.locator("#health")).toHaveText("正常");
         if (mode === "mobile") {
           await expect(page.locator("#expiryValue")).toHaveText("2026-10-03");
+          expectExpiryTriggerFits(await expiryTriggerGeometry(page));
+          await page
+            .locator("html")
+            .evaluate((node) => node.classList.add("font-stress"));
+          expectExpiryTriggerFits(await expiryTriggerGeometry(page));
+          await page
+            .locator("html")
+            .evaluate((node) => node.classList.remove("font-stress"));
           await expect(page.locator("#expiryDetail")).toContainText(
             market === "bitcoin"
               ? "到期时间：2026-10-03 20:30"
               : "到期时间：2026-10-03 20:00",
           );
           await page.locator("#expiryTrigger").click();
-          await expect(page.locator("#expiryMenu [role=option]").first()).toContainText(
+          await expect(
+            page.locator("#expiryMenu [role=option]").first(),
+          ).toContainText(
             market === "bitcoin" ? "2026-10-03（剩余2天）" : "2026-10-03（剩余",
           );
           await page.locator("#expiryTrigger").click();
@@ -895,6 +992,82 @@ test("untrusted watchlist text is rendered as text", async ({ page }) => {
   expect(await page.evaluate(() => globalThis.injected)).toBeUndefined();
 });
 
+test("bootstrap in flight survives rapid visibility changes without a duplicate chain", async ({
+  page,
+}) => {
+  await installVisibilityControl(page);
+  let moduleCalls = 0;
+  let releaseModules;
+  const moduleGate = new Promise((resolve) => (releaseModules = resolve));
+  await page.route("**/api/v1/modules", async (route) => {
+    moduleCalls += 1;
+    await moduleGate;
+    await route.fulfill({
+      json: [
+        {
+          id: "bitcoin",
+          provider_id: "binance",
+          provider: "Binance Options EAPI",
+          default_instrument: "BTCUSDT",
+        },
+      ],
+    });
+  });
+  let snapshotCalls = 0;
+  await page.route("**/api/v1/bitcoin/snapshot", (route) => {
+    snapshotCalls += 1;
+    return route.fulfill({ json: btc });
+  });
+  await page.goto("/bitcoin/desktop/");
+  await expect.poll(() => moduleCalls).toBe(1);
+  await setPageHidden(page, true);
+  await setPageHidden(page, false);
+  await setPageHidden(page, true);
+  releaseModules();
+  await page.waitForTimeout(100);
+  expect(moduleCalls).toBe(1);
+  expect(snapshotCalls).toBe(0);
+  await setPageHidden(page, false);
+  await expect.poll(() => snapshotCalls).toBe(1);
+  await expect(page.locator("#chainBody .sticky-strike").first()).toBeVisible();
+});
+
+test("failed bootstrap pauses retries while hidden and resumes once when visible", async ({
+  page,
+}) => {
+  await installVisibilityControl(page);
+  let moduleCalls = 0;
+  await page.route("**/api/v1/modules", (route) => {
+    moduleCalls += 1;
+    if (moduleCalls === 1)
+      return route.fulfill({ status: 503, json: { error: "temporary" } });
+    return route.fulfill({
+      json: [
+        {
+          id: "bitcoin",
+          provider_id: "binance",
+          provider: "Binance Options EAPI",
+          default_instrument: "BTCUSDT",
+        },
+      ],
+    });
+  });
+  let snapshotCalls = 0;
+  await page.route("**/api/v1/bitcoin/snapshot", (route) => {
+    snapshotCalls += 1;
+    return route.fulfill({ json: btc });
+  });
+  await page.goto("/bitcoin/desktop/");
+  await expect(page.locator("#notice")).toContainText("初始化失败");
+  await setPageHidden(page, true);
+  await page.waitForTimeout(5200);
+  expect(moduleCalls).toBe(1);
+  expect(snapshotCalls).toBe(0);
+  await setPageHidden(page, false);
+  await expect.poll(() => moduleCalls).toBe(2);
+  await expect.poll(() => snapshotCalls).toBe(1);
+});
+
 test("a registered third market renders through the shared dashboard", async ({
   page,
 }) => {
@@ -982,4 +1155,84 @@ test("a registered third market renders through the shared dashboard", async ({
     injected: undefined,
     images: 0,
   });
+});
+
+test("fixture market boots through its real URL, API, main module and navigation", async ({
+  page,
+}) => {
+  const registryPath = path.join(process.cwd(), "web/app/markets/registry.js");
+  const registrySource = fs.readFileSync(registryPath, "utf8");
+  await page.route("**/markets/registry.js", (route) =>
+    route.fulfill({
+      contentType: "application/javascript",
+      body: `${registrySource}
+registerMarketAdapter(
+  "fixture-market",
+  (context) => {
+    const base = createBitcoinAdapter(context);
+    return {
+      ...base,
+      id: "fixture-market",
+      title: "Fixture 期权",
+      symbol: "FIX",
+      currency: "USD",
+      priceDigits: 3,
+      provider: "fixture-provider",
+      defaultProvider: "fixture-provider",
+      async request(signal) {
+        const response = await fetch(
+          context.basePath + "/api/v1/fixture-market/snapshot?instrument=FIX",
+          { cache: "no-store", signal },
+        );
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.json();
+      },
+      merge(envelope) {
+        return base.merge(envelope.payload);
+      },
+    };
+  },
+  { label: "Fixture期权" },
+);`,
+    }),
+  );
+  const apiResponse = page.waitForResponse((response) =>
+    response.url().includes("/api/v1/fixture-market/snapshot"),
+  );
+  await page.goto("/fixture-market/desktop/");
+  const response = await apiResponse;
+  expect(response.status()).toBe(200);
+  const envelope = await response.json();
+  expect([envelope.market, envelope.provider, envelope.instrument]).toEqual([
+    "fixture-market",
+    "fixture-provider",
+    "FIX",
+  ]);
+  await expect(page.locator("#title")).toHaveText("Fixture 期权");
+  await expect(page.locator("#chainBody .sticky-strike.above")).toContainText(
+    "1.234",
+  );
+  await expect(page.locator(".market-tabs [data-market]")).toHaveCount(3);
+  await expect(
+    page.locator('.market-tabs [data-market="fixture-market"]'),
+  ).toHaveAttribute("aria-current", "page");
+  await expect(
+    page.locator('.market-tabs [data-market="bitcoin"]'),
+  ).toHaveAttribute("href", "/bitcoin/desktop/");
+  const health = await page.request.get("/api/v1/fixture-market/health");
+  expect(health.status()).toBe(200);
+  expect(await health.json()).toMatchObject({
+    status: "healthy",
+    provider: "fixture-provider",
+  });
+  await page.locator('.market-tabs [data-market="bitcoin"]').click();
+  await expect(page).toHaveURL(/\/bitcoin\/desktop\/$/);
+  await expect(
+    page.locator('.market-tabs [data-market="fixture-market"]'),
+  ).toBeVisible();
+  await page.locator('.market-tabs [data-market="fixture-market"]').click();
+  await expect(page).toHaveURL(/\/fixture-market\/desktop\/$/);
+  await page.goto("/fixture-market/mobile/");
+  await expect(page.locator("#app")).toHaveClass(/mode-mobile/);
+  await expect(page.locator("#title")).toHaveText("Fixture 期权");
 });

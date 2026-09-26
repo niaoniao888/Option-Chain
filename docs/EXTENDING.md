@@ -16,7 +16,9 @@ provider 必须保留市场原有 Runtime、刷新策略和领域计算，并由
 5. 模块导航来自 `/api/v1/modules`，只有同时注册的前端 adapter 才显示。所有动态标签使用 textContent 或 escapeHtml。
 6. 增加实际 GET snapshot/health/page 测试，以及通过共用 Dashboard 的浏览器 fixture；只注册卡片或返回 404 不算完成。
 
-前端 adapter 不复制轮询、存储、菜单、分页或表格，不在浏览器重算后台金融指标。无明确 version 的市场必须让可见值进入 fallback signature；有 version 的市场必须在任何金融快照变化时推进 version。
+前端 adapter 必须在 `web/app/markets/registry.js` 以静态 ESM import 注册，并把新增模块文件加入后端 `APP_ASSETS` 白名单。不要从市场标签、查询参数或运行时响应拼接脚本 URL。装配时会同时核对 registration、runtime descriptor 与 provider binding 的 market/provider 身份；不一致只隔离该市场，不能把一个来源的 Runtime 重新标记为另一个来源。
+
+前端 adapter 不复制轮询、存储、菜单、分页或表格，不在浏览器重算后台金融指标。无明确 version 的市场必须让可见值进入 fallback signature；有 version 的市场必须在任何金融快照变化时推进 version。浏览器验收应让测试 registry 覆盖全部已注册市场与模式，从第三市场实际 URL 启动，经 `main.js` bootstrap 读取真实 page/snapshot/health，再点击已有市场并返回第三市场；至少再覆盖第三市场手机入口。fixture 只能由隔离测试服务注册，不能进入生产 registry。
 
 ## 必须重新核实
 

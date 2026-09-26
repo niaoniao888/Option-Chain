@@ -11,6 +11,15 @@ const SORTS = new Set([
   "expiry_time",
 ]);
 
+const canonicalSortKey = (key) =>
+  key === "remaining_seconds"
+    ? "expiry_time"
+    : key === "delta"
+      ? "exercise_probability_pct"
+      : ["expiration_date", "expiry_ms"].includes(key)
+        ? "expiry"
+        : key;
+
 export function safeGet(storage, key) {
   try {
     return storage?.getItem(key) ?? null;
@@ -57,19 +66,11 @@ export function normalizeUi(input = {}) {
     typeof value === "number" && Number.isFinite(value) && value > 0
       ? value
       : null;
-  const migrateKey = (key) =>
-    key === "remaining_seconds"
-      ? "expiry_time"
-      : key === "delta"
-        ? "exercise_probability_pct"
-        : ["expiration_date", "expiry_ms"].includes(key)
-          ? "expiry"
-          : key;
   const migrateSort = (sort) =>
-    sort ? { ...sort, key: migrateKey(sort.key) } : sort;
+    sort ? { ...sort, key: canonicalSortKey(sort.key) } : sort;
   const priceSort = migrateSort(input.priceSort);
   const rankSort = migrateSort(input.rankSort || input.rankingSort);
-  const legacyRankKey = migrateKey(input.rankingSortKey);
+  const legacyRankKey = canonicalSortKey(input.rankingSortKey);
   return {
     view: VIEWS.has(input.view || input.mobileView)
       ? input.view || input.mobileView
@@ -155,6 +156,7 @@ export const saveUsSymbol = (storage, symbol) =>
 
 export function applySort(currentState, sortName, key) {
   const sort = currentState[sortName];
+  key = canonicalSortKey(key);
   if (sort.key === key)
     sort.direction = sort.direction === "asc" ? "desc" : "asc";
   else

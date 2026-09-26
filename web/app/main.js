@@ -37,6 +37,10 @@ let state,
   currentModel = null,
   localTimer = null,
   bootTimer = null;
+let visibilityBound = false;
+let uiBound = false;
+let bootInFlight = false;
+let initialized = false;
 const persist = () => {
   if (storageKey) saveUi(storage, storageKey, state);
 };
@@ -88,6 +92,8 @@ function sortClick(sortName) {
 }
 
 function bind() {
+  if (uiBound) return;
+  uiBound = true;
   document.querySelectorAll("[data-market]").forEach((link) => {
     link.href = marketUrl(link.dataset.market);
     link.classList.toggle("active", link.dataset.market === context.market);
@@ -221,16 +227,28 @@ function bind() {
     () => setTimeout(() => dashboard.flush(), 0),
     true,
   );
+  window.addEventListener("pagehide", () => adapter.release());
+}
+
+function bindVisibility() {
+  if (visibilityBound) return;
+  visibilityBound = true;
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       adapter.release();
       poller?.hidden();
-    } else {
+      if (bootTimer !== null) {
+        clearTimeout(bootTimer);
+        bootTimer = null;
+      }
+    } else if (initialized) {
       dashboard.updateProjection(adapter.project(now()));
-      poller?.visible();
+      if (poller) poller.visible();
+      else startPolling();
+    } else {
+      boot();
     }
   });
-  window.addEventListener("pagehide", () => adapter.release());
 }
 
 async function bootstrap() {
@@ -265,13 +283,14 @@ async function bootstrap() {
   }
   initializeState();
   bind();
-  startPolling();
-  localTimer = setInterval(() => {
-    if (!document.hidden && dashboard?.snapshot) {
-      currentModel = createModel(rawSnapshot, adapter.project(now()));
-      dashboard.updateProjection(currentModel.projected);
-    }
-  }, 1000);
+  if (!document.hidden) startPolling();
+  if (localTimer === null)
+    localTimer = setInterval(() => {
+      if (!document.hidden && dashboard?.snapshot) {
+        currentModel = createModel(rawSnapshot, adapter.project(now()));
+        dashboard.updateProjection(currentModel.projected);
+      }
+    }, 1000);
 }
 function initializeState() {
   const instrument =
@@ -343,16 +362,26 @@ function startPolling() {
 }
 
 function boot() {
-  bootstrap().catch((error) => {
-    const message = errorMessage(error);
-    root.querySelector("#notice").hidden = false;
-    root.querySelector("#notice").textContent =
-      `初始化失败：${message}；5秒后重试`;
-    if (bootTimer === null)
-      bootTimer = setTimeout(() => {
-        bootTimer = null;
-        boot();
-      }, 5000);
-  });
+  bindVisibility();
+  if (document.hidden || bootInFlight || initialized) return;
+  bootInFlight = true;
+  bootstrap()
+    .then(() => {
+      initialized = true;
+    })
+    .catch((error) => {
+      const message = errorMessage(error);
+      root.querySelector("#notice").hidden = false;
+      root.querySelector("#notice").textContent =
+        `初始化失败：${message}；5秒后重试`;
+      if (!document.hidden && bootTimer === null)
+        bootTimer = setTimeout(() => {
+          bootTimer = null;
+          boot();
+        }, 5000);
+    })
+    .finally(() => {
+      bootInFlight = false;
+    });
 }
 boot();
