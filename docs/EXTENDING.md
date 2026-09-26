@@ -4,12 +4,13 @@
 
 在 `providers/registry.py` 注册 `ProviderBinding`，提供 market_id、provider_id、显示名和非空 adapter。BTC adapter 实现目录、报价、指数、服务器时间、OI、mark 接口；US adapter 实现 fetch，并可提供 `configuration_status()`。默认仍为 Binance/Alpaca；未知或缺失适配器只使该市场 unavailable，不换源。
 
-provider 必须保留市场原有 Runtime、刷新策略和领域计算。测试至少覆盖 falsey adapter、真实一次刷新、envelope provider 身份、缓存键隔离，以及配置状态不依赖默认供应商凭据。
+provider 必须保留市场原有 Runtime、刷新策略和领域计算，并由 adapter 明确提供 `source_name`；BTC 可另提供面向快照的 `snapshot_source`，US 可提供等待首轮数据时的 `pending_source_delay_label`。不得用默认 Binance/Alpaca 名称标记替代来源，也不得把已有代次重新贴成另一 provider。测试至少覆盖 falsey adapter、真实一次刷新、HTTP payload 与 envelope/cache 的 provider/source 身份一致、缓存键隔离，以及配置状态不依赖默认供应商凭据。
 
 ## 增加第三市场
 
 1. 定义 `MarketDescriptor`：稳定 market_id、provider、默认 instrument、PC/手机路径、capabilities。
 2. 实现 `MarketRuntime`：start、stop、health、snapshot_envelope。计算、时区、交易日历和资格保留市场语义。
+   若市场使用单采集线程，组合 `CollectorSupervisor(make_thread, signal_stop, lock_path, join_timeout)`；线程自身继续实现该市场的 run loop。不得在新 Runtime 再复制锁、超时和重复启动处理。
 3. 建立 `MarketRegistration`；特色 API 用 route_installer，页面用 StaticPageConfig 指向 `web/app/index.html` 与 ESM 白名单。
 4. 前端实现 adapter 并调用 `registerMarketAdapter`。adapter 提供标题、列、精度、expiry 解析/显示、合同 ID、资格、排序值、收益/概率展示、状态和 snapshotVersion。
 5. 模块导航来自 `/api/v1/modules`，只有同时注册的前端 adapter 才显示。所有动态标签使用 textContent 或 escapeHtml。

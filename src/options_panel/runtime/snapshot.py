@@ -6,7 +6,8 @@ from options_panel.domain.calculations import finite_positive, finite_nonnegativ
 from options_panel.providers.binance import utc_iso
 
 class DashboardState:
-    def __init__(self, wall_clock: Callable[[], float] = time.time, monotonic: Callable[[], float] = time.monotonic):
+    def __init__(self, wall_clock: Callable[[], float] = time.time, monotonic: Callable[[], float] = time.monotonic,
+                 *, provider_id: str = "binance", source_name: str = "Binance Options EAPI"):
         self._lock = threading.RLock()
         self.wall_clock = wall_clock
         self.monotonic = monotonic
@@ -27,6 +28,22 @@ class DashboardState:
         self.catalog_error: str | None = None
         self.next_market_at = self.monotonic()
         self.next_catalog_at = self.monotonic()
+        self.provider_id = provider_id
+        self.source_name = source_name
+
+    def bind_source(self, provider_id: str, source_name: str) -> None:
+        """Bind empty state to one source; never relabel an existing generation."""
+        with self._lock:
+            populated = bool(
+                self.contracts or self.catalog_fetched_at is not None
+                or self.market_fetched_at is not None or self.server_time_ms is not None
+            )
+            if populated and (
+                self.provider_id != provider_id or self.source_name != source_name
+            ):
+                raise ValueError("dashboard state already belongs to a different provider")
+            self.provider_id = provider_id
+            self.source_name = source_name
 
     def current_server_ms(self) -> float:
         with self._lock:
@@ -312,7 +329,7 @@ class DashboardState:
             })
         return {
             "app": APP_ID,
-            "source": "Binance Options EAPI",
+            "source": self.source_name,
             "underlying": "BTCUSDT",
             "currency": "USDT",
             "index_price": index_price,

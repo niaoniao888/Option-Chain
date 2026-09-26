@@ -22,10 +22,14 @@ Python 从操作系统环境变量读取配置，不会自动读取 `.env`。`.e
 | `OPTIONS_US_DATA_DIR` | `<runtime>/us-equities/data`，真实自选和个人说明，不提交 |
 | `OPTIONS_US_COLLECTOR_ENABLED` | `true`；仅开关美股采集 |
 | `OPTIONS_BITCOIN_COLLECTOR_ENABLED` | `true`；仅开关 BTC 采集 |
+| `OPTIONS_BITCOIN_PROVIDER` | `binance`；选择已注册的 BTC 数据源，未知值使该市场报配置错误，不换源 |
+| `OPTIONS_US_EQUITIES_PROVIDER` | `alpaca`；选择已注册的美股数据源，未知值使该市场报配置错误，不换源 |
 | `ALPACA_API_KEY` / `ALPACA_API_SECRET` | 成对注入；未设置时 Windows 尝试当前用户 DPAPI，其他系统待配置 |
 | `OPTIONS_FORWARDED_HEADERS` | `false`；启用时 CLI 仅信任来自 127.0.0.1 的代理头 |
 
 启动参数 `--host`、`--port`、`--base-path` 优先于环境变量。`--open` 打开本机浏览器。不要在生产使用自动重载或多个 worker。
+
+监控使用 `/healthz` 判断进程是否响应，使用 `/api/v1/status` 分别查看各市场的运行与数据健康；`/readyz` 继续保留原 BTC 就绪语义。美股没有活跃浏览器租约时不会持续抓取所有自选股票，`no_active` 不等于数据源故障。修改供应商配置需要重启，旧内存快照不会转成新来源的备用数据。
 
 ## 网站集成方式
 

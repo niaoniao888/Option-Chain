@@ -32,6 +32,7 @@ class BinanceOptionsProvider:
     """Binance EAPI adapter; endpoint and schema details stay outside Refresher."""
 
     source_name = "Binance Options"
+    snapshot_source = "Binance Options EAPI"
 
     def __init__(self, fetch: Callable[[str], Any] = fetch_json):
         self.fetch = fetch

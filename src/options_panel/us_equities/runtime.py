@@ -5,6 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from options_panel.runtime.collector_supervisor import CollectorSupervisor
 from options_panel.runtime.lock import ProcessLock
 from options_panel.runtime.market import MarketDescriptor, SnapshotEnvelope
 
@@ -14,9 +15,6 @@ from .market_service import MarketService, adapter_configuration
 from .network_diagnostics import SafeJsonlLog
 from .refresh_policy import public_refresh_policy
 from .watchlist_store import WatchlistStore
-
-
-_HELD_COLLECTOR_LOCKS: list[ProcessLock] = []
 
 
 class UsEquitiesRuntime:
@@ -45,51 +43,46 @@ class UsEquitiesRuntime:
             probe=lambda key, secret: probe_credentials(key, secret, client_factory=client_factory),
         ) if adapter is None else adapter)
         self.market = MarketService(self.adapter)
-        self._thread: threading.Thread | None = None
-        self._collector_lock: ProcessLock | None = None
+        self._collector = CollectorSupervisor(
+            make_thread=self._make_thread,
+            signal_stop=lambda _thread: self.market.stop(),
+            lock_path=self.data_dir.parent / "collector.lock",
+            lock_factory=lambda path: ProcessLock(path),
+        )
         self._startup_error: str | None = None
+
+    def _make_thread(self) -> threading.Thread:
+        self.market.prepare_start()
+        return threading.Thread(target=self.market.run, name="us-equities-refresh", daemon=True)
+
+    @property
+    def _thread(self):
+        return self._collector.thread
+
+    @_thread.setter
+    def _thread(self, value):
+        self._collector.thread = value
+
+    @property
+    def _collector_lock(self):
+        return self._collector.lock
+
+    @_collector_lock.setter
+    def _collector_lock(self, value):
+        self._collector.lock = value
 
     def start(self) -> None:
         if not self.collector_enabled:
             return
-        if self._thread is not None:
-            if self._thread.is_alive():
-                return
-            if self._collector_lock is not None:
-                if self._collector_lock in _HELD_COLLECTOR_LOCKS:
-                    _HELD_COLLECTOR_LOCKS.remove(self._collector_lock)
-                self._collector_lock.release()
-            self._thread = self._collector_lock = None
-        lock = ProcessLock(self.data_dir.parent / "collector.lock")
         try:
-            lock.acquire()
-            self.market.prepare_start()
-            thread = threading.Thread(target=self.market.run, name="us-equities-refresh", daemon=True)
-            thread.start()
+            self._collector.start()
         except Exception as exc:
-            lock.release()
             self._startup_error = f"{type(exc).__name__}: {exc}"
             return
         self._startup_error = None
-        self._collector_lock = lock
-        self._thread = thread
 
     def stop(self) -> None:
-        thread, lock = self._thread, self._collector_lock
-        if thread is not None:
-            self.market.stop()
-            thread.join(timeout=15)
-        if lock is not None:
-            if thread is not None and thread.is_alive():
-                if lock not in _HELD_COLLECTOR_LOCKS:
-                    _HELD_COLLECTOR_LOCKS.append(lock)
-                return
-            else:
-                if lock in _HELD_COLLECTOR_LOCKS:
-                    _HELD_COLLECTOR_LOCKS.remove(lock)
-                lock.release()
-        self._thread = None
-        self._collector_lock = None
+        self._collector.stop()
 
     @property
     def startup_error(self) -> str | None:
@@ -125,6 +118,11 @@ class UsEquitiesRuntime:
             status = "healthy"
         else:
             status = "collector_stopped"
+        data_health = self.market.health_summary()
+        if status == "healthy" and data_health["data_status"] in {
+            "failed", "degraded", "partial", "stale",
+        }:
+            status = "degraded"
         result: dict[str, Any] = {
             "app": "us-options-dashboard",
             "status": status,
@@ -134,6 +132,7 @@ class UsEquitiesRuntime:
             "collector_enabled": self.collector_enabled,
             "collector_running": collector_running,
             "refresh_policy": public_refresh_policy(),
+            **data_health,
         }
         if config_error:
             result["configuration_error"] = config_error

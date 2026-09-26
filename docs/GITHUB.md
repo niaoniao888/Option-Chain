@@ -4,11 +4,11 @@ GitHub 仓库是保存项目文件和变更历史的地方；**上传源码不�
 
 ## 当前仓库
 
-仓库地址：https://github.com/niaoniao888/options-panel 。源码在根目录按文件夹展开；原始 ZIP 和 SHA-256 校验文件保留在根目录。请在现有仓库克隆后创建工作分支，不要重新初始化或强制覆盖远端历史。
+仓库地址：https://github.com/niaoniao888/Option-Chain 。原名称 `options-panel` 已重定向到同一个仓库。源码在根目录按文件夹展开；原始 ZIP 和 SHA-256 校验文件保留在根目录。请在现有仓库克隆后创建工作分支，不要重新初始化或强制覆盖远端历史。
 
 ```sh
-git clone https://github.com/niaoniao888/options-panel.git
-cd options-panel
+git clone https://github.com/niaoniao888/Option-Chain.git
+cd Option-Chain
 git switch -c feature/your-change
 ```
 

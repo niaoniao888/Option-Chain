@@ -72,10 +72,10 @@ class MarketService:
             if configuration["error"]
             else "数据源尚未配置，请先在本机管理页完成配置"
         )
-        return {"app": "us-options-dashboard", "source": getattr(self.adapter, "source_name", "Alpaca"),
+        return {"app": "us-options-dashboard", "source": getattr(self.adapter, "source_name", type(self.adapter).__name__),
                 "symbol": symbol, "state": "loading" if configured else "configuration_required",
                 "market_status": "UNVERIFIED", "fetch_health": "waiting_for_first_snapshot" if configured else "awaiting_configuration",
-                "source_delay_label": "股票 IEX；期权 Indicative（免费调整参考源，非真实 OPRA）",
+                "source_delay_label": getattr(self.adapter, "pending_source_delay_label", None),
                 "freshness": "unavailable", "quote_time": None, "fetched_at": None, "calculated_at": None,
                 "calculation_basis": "等待完整快照", "underlying_price": None, "contracts": [],
                 "error": "正在获取首轮完整快照" if configured else configuration_message,
@@ -90,6 +90,50 @@ class MarketService:
                                   if record[1] > now}
         self._legacy_until = {symbol: until for symbol, until in self._legacy_until.items() if until > now}
         return set(self._legacy_until) | {symbol for symbol, _until in self._leases.values()}
+
+    def health_summary(self) -> dict[str, Any]:
+        """Return bounded top-level collector metadata without projecting contracts."""
+        now = self.monotonic()
+        with self._lock:
+            active = self._active_symbols_locked(now)
+            active_failures = {
+                symbol
+                for symbol in active
+                if int(self._diagnostics.get(symbol, {}).get("consecutive_failures", 0) or 0) > 0
+                or self._cache.get(symbol, {}).get("fetch_health") == "failed"
+            }
+            success_ages = [
+                max(0.0, now - self._last_success[symbol])
+                for symbol in active
+                if symbol in self._last_success
+            ]
+            waiting_symbols = active - active_failures - set(self._last_success)
+            if not active:
+                data_status = "no_active"
+            elif active_failures:
+                data_status = "degraded" if success_ages else "failed"
+            elif waiting_symbols and success_ages:
+                data_status = "partial"
+            elif waiting_symbols:
+                data_status = "waiting"
+            elif max(success_ages) >= STALE_AFTER_SECONDS:
+                data_status = "stale"
+            else:
+                data_status = "healthy"
+            return {
+                "data_status": data_status,
+                "active_symbol_count": len(active),
+                "cache_symbol_count": len(self._cache),
+                "queued_symbol_count": len(active.intersection(self._queued_since)),
+                "inflight_symbol_count": len(active.intersection(self._inflight)),
+                "failure_count": len(active_failures),
+                "waiting_symbol_count": len(waiting_symbols),
+                "data_age_seconds": max(success_ages) if success_ages else None,
+                "contract_count": sum(
+                    len(value.get("contracts", ())) for value in self._cache.values()
+                    if isinstance(value, dict)
+                ),
+            }
 
     def _touch_lease_locked(self, symbol: str, now: float, client_id: str | None,
                             active: bool | None, activity_seq: int | None) -> None:
@@ -279,7 +323,7 @@ class MarketService:
             rows = [calculate_contract(item, underlying_price=raw.get("underlying_price"), market_status=market,
                                        calculated_at_utc=calculated_at,
                                        now_utc=datetime.fromtimestamp(self.wall_clock(), timezone.utc)) for item in normalized]
-            snapshot = {"app": "us-options-dashboard", "source": getattr(self.adapter, "source_name", "Alpaca"),
+            snapshot = {"app": "us-options-dashboard", "source": getattr(self.adapter, "source_name", type(self.adapter).__name__),
                         "symbol": symbol, "state": "ready", "market_status": market, "fetch_health": "healthy",
                         "source_delay_label": raw.get("source_delay_label"), "freshness": raw.get("freshness", "snapshot"),
                         "quote_time": raw.get("quote_time"), "fetched_at": utc_now_iso(self.wall_clock),

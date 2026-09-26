@@ -218,6 +218,9 @@ class PlatformArchitectureTests(unittest.TestCase):
                 Path(directory) / "data", collector_enabled=False,
                 adapter=SnapshotAdapter(), provider_id="fixture-us", provider_name="Fixture US",
             )
+            pending = us_runtime.snapshot_envelope("AAPL").payload
+            self.assertEqual(pending["source"], "Fixture US")
+            self.assertIsNone(pending["source_delay_label"])
             us_runtime.market.wall_clock = lambda: 1_800_000_000.0
             self.assertTrue(us_runtime.market.refresh("AAPL"))
             us_envelope = us_runtime.snapshot_envelope("AAPL")
@@ -352,6 +355,24 @@ class PlatformArchitectureTests(unittest.TestCase):
         self.assertEqual(health["source"], "Fixture US")
         self.assertEqual(public_health({"provider": "fixture"}),
                          {"provider": "fixture", "status": "unknown"})
+        self.assertEqual(
+            public_health({
+                "data_status": "failed", "active_symbol_count": 1,
+                "cache_symbol_count": 2, "queued_symbol_count": 1,
+                "inflight_symbol_count": 0, "failure_count": 1,
+                "waiting_symbol_count": 1, "data_age_seconds": 12.5,
+                "contract_count": 20,
+                "secret": "hidden",
+            }),
+            {
+                "status": "unknown", "data_status": "failed",
+                "active_symbol_count": 1, "cache_symbol_count": 2,
+                "queued_symbol_count": 1, "inflight_symbol_count": 0,
+                "failure_count": 1, "waiting_symbol_count": 1,
+                "data_age_seconds": 12.5,
+                "contract_count": 20,
+            },
+        )
 
     def test_broken_provider_selector_is_isolated(self):
         good = StubRuntime()
@@ -407,6 +428,62 @@ class PlatformArchitectureTests(unittest.TestCase):
                 envelope = runtime.snapshot_envelope()
                 self.assertEqual((envelope.market, envelope.provider, envelope.instrument),
                                  ("bitcoin", "fixture-binance", "BTCUSDT"))
+                self.assertEqual(envelope.payload["source"], "Fixture Binance")
+                self.assertEqual(
+                    client.get("/api/v1/bitcoin/snapshot").json()["source"],
+                    "Fixture Binance",
+                )
+
+    def test_populated_bitcoin_state_cannot_be_relabeled_for_another_provider(self):
+        state = DashboardState()
+        state.commit_catalog([])
+        with tempfile.TemporaryDirectory() as directory:
+            from options_panel.content.guide_store import GuideStore
+            with self.assertRaisesRegex(ValueError, "different provider"):
+                BitcoinRuntime(
+                    state,
+                    GuideStore(Path(directory) / "guide.json"),
+                    Path(directory),
+                    collector_enabled=False,
+                    provider_id="fixture-binance",
+                    provider=FixtureBitcoinProvider(),
+                )
+
+    def test_replacement_us_provider_identity_reaches_http_and_envelope(self):
+        providers = default_provider_registry()
+        adapter = SnapshotAdapter()
+        providers.register(
+            "us-equities",
+            "fixture-us",
+            lambda _settings: ProviderBinding(
+                "us-equities", "fixture-us", "Fixture US", adapter=adapter
+            ),
+        )
+        with self.app_root() as root:
+            settings = self.settings(
+                root,
+                us_equities_provider="fixture-us",
+                us_collector_enabled=False,
+            )
+            with TestClient(
+                create_app(
+                    settings,
+                    DashboardState(),
+                    provider_registry=providers,
+                )
+            ) as client:
+                runtime = client.app.state.platform.runtime("us-equities")
+                envelope = runtime.snapshot_envelope("SPCX")
+                response = client.get(
+                    "/api/v1/us-equities/snapshot", params={"symbol": "SPCX"}
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["source"], "Fixture US")
+                self.assertIsNone(response.json()["source_delay_label"])
+                self.assertEqual(
+                    (envelope.market, envelope.provider, envelope.payload["source"]),
+                    ("us-equities", "fixture-us", "Fixture US"),
+                )
 
     def test_shutdown_failure_does_not_skip_peer_and_alive_thread_cannot_restart(self):
         first, broken = StubRuntime(), StubRuntime(stop_error=True)

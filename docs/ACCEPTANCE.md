@@ -1,6 +1,6 @@
 # 当前验收入口
 
-以下为原 BTC 交接验收历史记录；2.1.0 双市场整合结果见 [US-INTEGRATION-ACCEPTANCE.md](US-INTEGRATION-ACCEPTANCE.md)。历史“未接入美股”仅适用于 2.0.0。
+当前统一平台重构的候选结果在本文末尾“统一响应式前台候选验收”一节。下面的原 BTC 交接验收属于 **2.0.0 历史记录**；其中“未上传 GitHub”“未接入美股”、旧页面与测试数量不能作为当前状态。2.1.0 双市场首次整合结果另见 [US-INTEGRATION-ACCEPTANCE.md](US-INTEGRATION-ACCEPTANCE.md)。
 
 # 交接验收记录
 
@@ -76,13 +76,14 @@ Windows loopback，对快照 API 发起 100 次请求，并发 8：无错误；G
 
 ## 2026-09-26 统一响应式前台候选验收
 
-本节只记录当前候选工作树的本地结果，尚未经过独立 reviewer、Git 提交或部署。四个 BTC/美股 PC/手机 URL 现在由同一个 `web/app/index.html` 和 ESM 组件树提供；美股管理页继续独立。
+本节记录候选工作树的本地结果。前台已经 implementer 实施、compact_review 独立审查、主 Agent 回归验收，形成提交 `b782be1`；后台公共设施也已完成独立审查和主 Agent 全量回归。生产切换与真实行情观察将在后续记录。四个 BTC/美股 PC/手机 URL 现在由同一个 `web/app/index.html` 和 ESM 组件树提供；美股管理页继续独立。
 
 ### 测试迁移对照
 
 - 原 `tests/test_ui.js` 与美股前端测试中针对整页压缩源码、选择器字符串和 CommonJS VM 的断言，改为直接导入 ESM 的状态、轮询、投影、适配器与 Dashboard 纯函数测试。
 - storage 覆盖安全 getter/method 异常、market/provider/instrument/mode 隔离、旧键适用边界及 delta/expiry 排序键迁移。
 - polling 覆盖单链、超时、429 上限、hidden 立即恢复、lease `active=0`、错误状态保留及定时器上限；同一 generation/version 的浏览器测试额外断言表格 DOM 不替换，新代次才进入受保护刷新。
+- 主 Agent 补充 2,000 轮虚拟时钟压力测试：混合成功、失败、超时和隐藏/恢复，单次最大在途请求为 1，轮询定时器最多 2 个，停止后请求和计时器均为 0。此测试不访问真实行情，不等同于数周实机运行。
 - US 覆盖中国到期日期/分钟、日期合法性、市场切换/报价有效期、重复同 strike/side 合约、概率排序、分页空态恢复与跨股票排序状态。
 - BTC 覆盖 15 天默认到期、30 分钟结算、OI=0、负/零时间价值、Mark 参考、概率极值/null、Call/Put 单期行数差异，浏览器不重算后台金融值。
 - Playwright 覆盖菜单键盘与焦点回归、文字选择/指针保护、排序分页、股票切换、第三测试市场注册后通过同一 Dashboard 渲染。
@@ -92,7 +93,7 @@ Windows loopback，对快照 API 发起 100 次请求，并发 8：无错误；G
 | 检查 | 结果 |
 | --- | --- |
 | Python compileall | 通过 |
-| Python unittest | 172/172 通过 |
+| Python unittest（Windows） | 188 项：187 通过，1 项 POSIX 大小写路径锁测试按平台跳过，交 Linux CI 执行 |
 | Node ESM 行为与 bootstrap | 2/2 通过；无消费者的旧 guide 前端测试随资源删除 |
 | Prettier | `format:check` 通过 |
 | Playwright Chromium | 20/20 通过 |
@@ -101,4 +102,6 @@ Windows loopback，对快照 API 发起 100 次请求，并发 8：无错误；G
 
 Playwright 使用 collector-disabled 的临时 8785 服务和内联测试快照，测试结束自动关闭；没有访问真实行情或个人数据。未验证实体手机，也未建立跨 Windows/Linux 字体像素完全一致的截图基线；CI 主要使用 computed style、交互、尺寸和布局断言，截图作为当次运行证据。
 
-后台平台阶段曾从 171 项基线删除 19 项旧前端源码实现断言、增加 18 项注册表/生命周期/契约测试，形成 170 项候选；本轮再增加 provider selector 初始化隔离和结构化刷新日志测试，当前为 172 项。计数变化不代表减少金融公式覆盖。Playwright 报告位于被 Git 忽略的 `playwright-report/`，CI 无论成功失败均上传该报告。
+后台平台阶段曾从 171 项基线删除 19 项旧前端源码实现断言、增加 18 项注册表/生命周期/契约测试，形成 170 项候选；再增加 provider selector 初始化隔离和结构化刷新日志测试，形成 172 项。最后后台设施增加 16 项，当前 188 项。计数变化不代表减少金融公式覆盖。Playwright 报告位于被 Git 忽略的 `playwright-report/`，CI 无论成功失败均上传该报告。
+
+新增后台测试涵盖共同 Supervisor 的启动失败、重复启动、停止异常、超时、真实文件锁与 GC、50 轮启停清理；US 活跃数据的等待、部分就绪、失败保留、过期和恢复；替代数据源的实际 GET 与原来源快照拒绝重标。`domain/`、US `model.py` 和交易日历的金融逻辑未修改。

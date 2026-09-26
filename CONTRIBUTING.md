@@ -13,10 +13,15 @@
 Windows PowerShell：
 
 ```powershell
+# 首次准备（生产运行不需要 Node 或浏览器测试依赖）
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Development
+npm ci
+npx playwright install chromium
+$env:PATH = "$PWD\.venv\Scripts;" + $env:PATH
 $env:PYTHONPATH = "src"
 $env:OPTIONS_COLLECTOR_ENABLED = "false"
-& "F:\【股票】\【期权面板】\【比特币面板】\.venv\Scripts\python.exe" -m compileall -q src tests scripts
-& "F:\【股票】\【期权面板】\【比特币面板】\.venv\Scripts\python.exe" -m unittest discover -s tests -v
+& .\.venv\Scripts\python.exe -m compileall -q src tests scripts
+& .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 node tests/test_ui.js
 node tests/test_bootstrap.js
 npm run format:check

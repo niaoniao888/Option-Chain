@@ -106,6 +106,46 @@ class MarketServiceTests(unittest.TestCase):
         self.mono.value+=0.001
         self.assertNotIn("SPCX",self.service._active_symbols_locked(self.mono.value))
 
+    def test_health_summary_distinguishes_idle_waiting_failure_stale_and_recovery(self):
+        self.assertEqual(self.service.health_summary()["data_status"], "no_active")
+        self.service.snapshot("SPCX", client_id="tab", active=True, activity_seq=1)
+        waiting = self.service.health_summary()
+        self.assertEqual(waiting["data_status"], "waiting")
+        self.assertEqual((waiting["active_symbol_count"], waiting["cache_symbol_count"]), (1, 0))
+        self.adapter.error = TimeoutError("offline")
+        self.assertFalse(self.service.refresh("SPCX"))
+        failed = self.service.health_summary()
+        self.assertEqual((failed["data_status"], failed["failure_count"]), ("failed", 1))
+        self.adapter.error = None
+        self.mono.value += 60
+        self.service.snapshot("SPCX", client_id="tab", active=True, activity_seq=2)
+        self.assertTrue(self.service.refresh("SPCX"))
+        healthy = self.service.health_summary()
+        self.assertEqual((healthy["data_status"], healthy["contract_count"]), ("healthy", 1))
+        self.adapter.error = TimeoutError("offline again")
+        self.assertFalse(self.service.refresh("SPCX"))
+        self.assertEqual(self.service.health_summary()["data_status"], "degraded")
+        self.adapter.error = None
+        self.assertTrue(self.service.refresh("SPCX"))
+        self.mono.value += 121
+        self.service.snapshot("SPCX", client_id="tab", active=True, activity_seq=3)
+        self.assertEqual(self.service.health_summary()["data_status"], "stale")
+        self.service.snapshot("SPCX", client_id="tab", active=False, activity_seq=4)
+        self.assertEqual(self.service.health_summary()["data_status"], "no_active")
+
+    def test_health_summary_marks_mixed_success_and_first_load_as_partial(self):
+        self.service.snapshot("SPCX", client_id="ready-tab", active=True, activity_seq=1)
+        self.assertTrue(self.service.refresh("SPCX"))
+        self.service.snapshot("MSFT", client_id="waiting-tab", active=True, activity_seq=1)
+        partial = self.service.health_summary()
+        self.assertEqual(partial["data_status"], "partial")
+        self.assertEqual(partial["waiting_symbol_count"], 1)
+        self.assertEqual(partial["failure_count"], 0)
+        self.assertTrue(self.service.refresh("MSFT"))
+        healthy = self.service.health_summary()
+        self.assertEqual(healthy["data_status"], "healthy")
+        self.assertEqual(healthy["waiting_symbol_count"], 0)
+
     def test_idle_cache_lru_limit_and_age_cleanup_include_scheduler_state(self):
         for index in range(12):
             symbol=f"S{index:02d}"; self.service._cache[symbol]={"symbol":symbol,"contracts":[]}

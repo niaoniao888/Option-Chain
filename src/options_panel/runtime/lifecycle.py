@@ -10,6 +10,9 @@ from options_panel.runtime.market import MarketDescriptor
 PUBLIC_HEALTH_FIELDS = {
     "app", "version", "status", "stale", "age_seconds", "provider", "source",
     "configured", "writable", "collector_enabled", "collector_running", "refresh_policy",
+    "data_status", "active_symbol_count", "cache_symbol_count", "queued_symbol_count",
+    "inflight_symbol_count", "failure_count", "waiting_symbol_count", "data_age_seconds",
+    "contract_count",
 }
 PUBLIC_REFRESH_POLICY_FIELDS = {
     "market_refresh_seconds", "cache_poll_seconds", "stale_after_seconds",

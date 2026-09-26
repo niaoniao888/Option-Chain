@@ -5,13 +5,11 @@ from typing import Any
 
 from options_panel.content.guide_store import GuideStore
 from options_panel.runtime.snapshot import DashboardState
+from options_panel.runtime.collector_supervisor import CollectorSupervisor
 from options_panel.runtime.lock import ProcessLock
 from options_panel.runtime.market import MarketDescriptor, SnapshotEnvelope
 from options_panel.runtime.refresher import Refresher
 from options_panel.providers.bitcoin_options import BinanceOptionsProvider, BitcoinOptionsProvider
-
-
-_HELD_COLLECTOR_LOCKS: list[ProcessLock] = []
 
 
 @dataclass
@@ -44,49 +42,47 @@ class BitcoinRuntime:
         if provider is None and provider_id != "binance":
             raise ValueError(f"bitcoin provider adapter is required: {provider_id}")
         self.provider = BinanceOptionsProvider() if provider is None else provider
+        self.state.bind_source(
+            provider_id,
+            getattr(self.provider, "snapshot_source", getattr(self.provider, "source_name", provider_name)),
+        )
         self.refresher_factory = refresher_factory
-        self._thread: Any | None = None
-        self._collector_lock: ProcessLock | None = None
+        self._collector = CollectorSupervisor(
+            make_thread=lambda: self.refresher_factory(self.state, provider=self.provider),
+            signal_stop=lambda thread: thread.stop_event.set(),
+            lock_path=self.runtime_dir / "collector.lock",
+            lock_factory=lambda path: ProcessLock(path),
+        )
         self.startup_error: str | None = None
+
+    @property
+    def _thread(self):
+        return self._collector.thread
+
+    @_thread.setter
+    def _thread(self, value):
+        self._collector.thread = value
+
+    @property
+    def _collector_lock(self):
+        return self._collector.lock
+
+    @_collector_lock.setter
+    def _collector_lock(self, value):
+        self._collector.lock = value
 
     def start(self) -> None:
         if not self.collector_enabled:
             return
-        if self._thread is not None:
-            if self._thread.is_alive():
-                return
-            if self._collector_lock is not None:
-                if self._collector_lock in _HELD_COLLECTOR_LOCKS:
-                    _HELD_COLLECTOR_LOCKS.remove(self._collector_lock)
-                self._collector_lock.release()
-            self._thread = self._collector_lock = None
-        lock = ProcessLock(self.runtime_dir / "collector.lock")
         try:
-            lock.acquire()
-            thread = self.refresher_factory(self.state, provider=self.provider)
-            thread.start()
+            self._collector.start()
         except Exception as exc:
-            lock.release()
             self.startup_error = f"{type(exc).__name__}: {exc}"
             raise
-        self._collector_lock, self._thread = lock, thread
         self.startup_error = None
 
     def stop(self) -> None:
-        thread, lock = self._thread, self._collector_lock
-        if thread is None:
-            return
-        thread.stop_event.set()
-        thread.join(timeout=15)
-        if thread.is_alive():
-            if lock is not None and lock not in _HELD_COLLECTOR_LOCKS:
-                _HELD_COLLECTOR_LOCKS.append(lock)
-            return
-        if lock is not None:
-            if lock in _HELD_COLLECTOR_LOCKS:
-                _HELD_COLLECTOR_LOCKS.remove(lock)
-            lock.release()
-        self._thread = self._collector_lock = None
+        self._collector.stop()
 
     def health(self) -> dict[str, Any]:
         value = self.state.health()

@@ -10,7 +10,9 @@
 
 BTC 默认 provider 是 BinanceOptionsProvider，Refresher 保留原目录/行情节奏和计算提交顺序。US 默认 provider 是 AlpacaAdapter，MarketService 保留访问租约、公平刷新队列和轻量 unchanged 响应。替代 provider 通过注册表注入现有市场运行时；缺少适配器会使该市场初始化失败，不会静默换回默认源。
 
-RuntimeLifecycle 统一启动、停止和公开状态，ProcessLock 防止同一运行目录出现第二采集所有者。两个市场的线程调度尚未强行合并：BTC Refresher 本身是线程，US runtime 包装 MarketService 线程。停止超时保留线程引用和锁，直到确认线程结束，防止重复启动。
+RuntimeLifecycle 负责跨市场启停隔离和公开状态；每个 Runtime 内部复用 `CollectorSupervisor` 持有 ProcessLock、线程引用和 15 秒停止等待。BTC 的 Refresher 仍是原线程，US 仍以线程运行 MarketService，各自 run loop、刷新间隔和失败策略没有合并。线程工厂、启动、停止回调或 join 失败不会泄漏或提前释放锁；停止超时或回调异常时，监督器在进程级保留未终止所有者，即使 Runtime 被回收也继续持锁，确认线程结束后由后续 start/stop 安全清理且不保留已结束引用。
+
+BTC `DashboardState` 在首个代次前绑定 provider/source；已有数据不能换成另一来源标签。US `MarketService.health_summary()` 只读取顶层缓存、租约、队列、失败计数和年龄，不复制或重新投影 contracts。无活跃租约时数据状态为 `no_active`，不会因闲置缓存老化使 Runtime 永久异常；部分活跃标的已有数据而另一些仍在首轮等待时为 `partial`，不会误报全部健康。
 
 结构化 JSON 日志轮转，刷新事件包含 market、provider、instrument、耗时、连续失败、数据年龄、队列等待、缓存规模和合约数。公共状态和日志只记录异常类型或布尔状态，不记录异常正文、凭据或带密钥 URL。
 

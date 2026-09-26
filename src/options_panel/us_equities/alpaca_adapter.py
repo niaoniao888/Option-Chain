@@ -402,6 +402,7 @@ def _safe_contract_metadata(row: dict, metadata_fetched_at: str | None = None) -
 
 class AlpacaAdapter:
     source_name = SOURCE_NAME
+    pending_source_delay_label = "股票 IEX；期权 Indicative（免费调整参考源，非真实 OPRA）"
     def __init__(self, *, credentials_loader=load_credentials, client_factory=AlpacaHttp, probe=probe_credentials,
                  now: Callable[[], datetime] | None = None, monotonic: Callable[[], float] = time.monotonic,
                  metadata_cache: MetadataCache | None = None):

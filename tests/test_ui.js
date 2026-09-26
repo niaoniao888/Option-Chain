@@ -593,7 +593,101 @@ const root = path.resolve(__dirname, ".."),
     "web/us-equities/style.css",
   ])
     assert(!fs.existsSync(path.join(root, legacy)));
-  console.log("Unified UI modules: PASS");
+  // Run thousands of refreshes without real time or network. Include failures,
+  // timeouts and hide/resume while retaining only a single in-flight request.
+  const stressTimers = new Map();
+  const stressDocument = { hidden: false };
+  let stressNow = 0,
+    stressId = 0,
+    stressRequests = 0,
+    stressActive = 0,
+    stressPeak = 0,
+    stressCommits = 0,
+    stressFailures = 0,
+    lastStressSequence = 0;
+  const stressClock = {
+    setTimeout(fn, delay) {
+      const id = ++stressId;
+      stressTimers.set(id, { at: stressNow + delay, fn });
+      return id;
+    },
+    clearTimeout(id) {
+      stressTimers.delete(id);
+    },
+  };
+  const flushStress = async () => {
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+  };
+  const stress = new polling.PollingController({
+    timers: stressClock,
+    documentRef: stressDocument,
+    interval: 5,
+    timeout: 50,
+    request: (signal, sequence) =>
+      new Promise((resolve, reject) => {
+        stressRequests++;
+        stressPeak = Math.max(stressPeak, ++stressActive);
+        let settled = false;
+        const finish = (error) => {
+          if (settled) return;
+          settled = true;
+          stressActive--;
+          stressClock.clearTimeout(timer);
+          signal.removeEventListener("abort", abort);
+          if (error) reject(error);
+          else resolve(sequence);
+        };
+        const abort = () =>
+          finish(
+            Object.assign(new Error("interrupted"), {
+              name: signal.reason === "timeout" ? "Error" : "AbortError",
+            }),
+          );
+        const timer = stressClock.setTimeout(
+          () => finish(sequence % 7 === 0 ? new Error("offline") : null),
+          sequence % 11 === 0 ? 100 : 10,
+        );
+        signal.addEventListener("abort", abort, { once: true });
+      }),
+    commit: (sequence) => {
+      assert(sequence > lastStressSequence);
+      lastStressSequence = sequence;
+      stressCommits++;
+    },
+    fail: () => {
+      stressFailures++;
+      return 15;
+    },
+  });
+  stress.start();
+  for (let step = 0; stressRequests < 2000 && step < 10000; step++) {
+    const next = [...stressTimers.entries()].sort(
+      (a, b) => a[1].at - b[1].at,
+    )[0];
+    assert(next, "poller must recover after every failure");
+    stressNow = next[1].at;
+    stressTimers.delete(next[0]);
+    next[1].fn();
+    await flushStress();
+    if (step % 97 === 0) {
+      stressDocument.hidden = true;
+      stress.hidden();
+      await flushStress();
+      assert.equal(stressTimers.size, 0);
+      stressDocument.hidden = false;
+      stress.visible();
+    }
+    assert(stressTimers.size <= 3);
+    assert(stress.pendingTimers <= 2);
+  }
+  stress.stop();
+  await flushStress();
+  assert.equal(stressRequests, 2000);
+  assert.equal(stressPeak, 1);
+  assert.equal(stressActive, 0);
+  assert.equal(stressTimers.size, 0);
+  assert(stressCommits > 1000 && stressFailures > 200);
+  console.log("Unified UI modules: PASS (including 2000 virtual refreshes)");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;
