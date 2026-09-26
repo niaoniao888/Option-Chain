@@ -1,5 +1,11 @@
 import { fetchJson } from "../core/polling.js";
-import { date, finite, number, percent } from "../core/formats.js";
+import {
+  chinaDateTimeMinute,
+  date,
+  finite,
+  number,
+  percent,
+} from "../core/formats.js";
 
 /**
  * Build the BTC display adapter. The adapter selects and formats existing server
@@ -72,20 +78,6 @@ export function bitcoinMobileRemaining(seconds) {
   return `${Math.floor(safe / 86400)}天`;
 }
 
-function shanghaiDateTime(value) {
-  const parts = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(new Date(Number(value)));
-  const get = (type) => parts.find((part) => part.type === type)?.value || "";
-  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
-}
-
 export function createBitcoinAdapter({ basePath = "", mode }) {
   let source = null,
     localError = null;
@@ -106,7 +98,7 @@ export function createBitcoinAdapter({ basePath = "", mode }) {
     priceDigits: 0,
     parseExpiryId: Number,
     expiryLabel: (value) => date(value),
-    expiryDetailFor: (value) => shanghaiDateTime(value),
+    expiryDetailFor: (value) => chinaDateTimeMinute(value),
     remainingText: bitcoinRemaining,
     mobileRemainingText: bitcoinMobileRemaining,
     strikeGroups(strikes) {
@@ -136,6 +128,7 @@ export function createBitcoinAdapter({ basePath = "", mode }) {
       "period_return_pct",
       "annualized_pct",
       "exercise_probability_pct",
+      "expiry_time",
     ],
     priceAnnualLabel(side) {
       return `${side === "CALL" ? "Covered Call" : "Sell Put"}<br>年化`;
@@ -220,12 +213,27 @@ export function createBitcoinAdapter({ basePath = "", mode }) {
       return snapshot?.market_generation_ms ?? snapshot?.fetched_at;
     },
     sortValue(row, key) {
-      return key === "expiry"
-        ? row.expiry_ms
+      return key === "expiry" || key === "expiry_time"
+        ? this.expiryInstant(row)
         : key === "exercise_probability_pct" &&
             row.probability_display_state === "settling"
           ? null
           : row[key];
+    },
+    expiryInstant(row) {
+      const raw = row?.expiry_ms,
+        value =
+          typeof raw === "number"
+            ? raw
+            : typeof raw === "string" && raw.trim()
+              ? Number(raw)
+              : NaN;
+      return finite(value) && Number.isFinite(new Date(value).getTime())
+        ? value
+        : null;
+    },
+    expiryDetail(row) {
+      return chinaDateTimeMinute(this.expiryInstant(row));
     },
     periodParts(row, spot) {
       const relative =

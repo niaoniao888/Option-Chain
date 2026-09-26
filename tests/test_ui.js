@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, ".."),
   load = (relative) => import(pathToFileURL(path.join(root, relative)).href);
 (async () => {
   const state = await load("web/app/core/state.js"),
+    formats = await load("web/app/core/formats.js"),
     polling = await load("web/app/core/polling.js"),
     dashboard = await load("web/app/components/dashboard.js"),
     menu = await load("web/app/components/menu.js"),
@@ -153,11 +154,17 @@ const root = path.resolve(__dirname, ".."),
     "chain",
   );
   const switched = state.normalizeUi();
-  state.applySort(switched, "priceSort", "remaining_seconds");
+  state.applySort(switched, "priceSort", "expiry_time");
   assert.deepEqual(switched.priceSort, {
-    key: "remaining_seconds",
+    key: "expiry_time",
     direction: "asc",
   });
+  assert.deepEqual(
+    state.normalizeUi({
+      priceSort: { key: "remaining_seconds", direction: "desc" },
+    }).priceSort,
+    { key: "expiry_time", direction: "desc" },
+  );
   const now = 1_800_000_000_000,
     btcRaw = {
       contracts: [
@@ -183,6 +190,26 @@ const root = path.resolve(__dirname, ".."),
   assert.equal(btcProjected.contracts[0].probability_display_state, "settling");
   assert.equal(btcProjected.contracts[1].annualized_pct, null);
   const btcAdapter = bitcoin.createBitcoinAdapter({ mode: "desktop" });
+  assert.equal(
+    formats.chinaDateTimeMinute(Date.parse("2026-10-03T12:00:00Z")),
+    "2026-10-03 20:00",
+  );
+  assert.equal(formats.chinaDateTimeMinute(null), "—");
+  assert.equal(formats.chinaDateTimeMinute(""), "—");
+  assert.equal(formats.chinaDateTimeMinute(1e20), "—");
+  assert.equal(
+    btcAdapter.expiryDetail({
+      expiry_ms: Date.parse("2026-10-03T12:00:00Z"),
+    }),
+    "2026-10-03 20:00",
+  );
+  assert.equal(btcAdapter.expiryDetail({ expiry_ms: null }), "—");
+  assert.equal(btcAdapter.sortValue({ expiry_ms: null }, "expiry_time"), null);
+  assert.equal(btcAdapter.expiryInstant({ expiry_ms: "   " }), null);
+  assert.equal(btcAdapter.expiryInstant({ expiry_ms: true }), null);
+  assert.equal(btcAdapter.expiryInstant({ expiry_ms: 1e20 }), null);
+  assert.equal(btcAdapter.expiryInstant({ expiry_ms: String(now) }), now);
+  assert.equal(btcAdapter.sortValue({ expiry_ms: now }, "expiry_time"), now);
   assert.equal(
     btcAdapter.sortValue(
       { exercise_probability_pct: 88, probability_display_state: "settling" },
@@ -361,6 +388,23 @@ const root = path.resolve(__dirname, ".."),
     mode: "desktop",
     storage: store,
   });
+  assert.equal(
+    usFormatAdapter.expiryDetail({ expires_at_utc: "2026-10-03T12:00:00Z" }),
+    "2026-10-03 20:00",
+  );
+  assert.equal(usFormatAdapter.expiryDetail({ expires_at_utc: null }), "—");
+  assert.equal(usFormatAdapter.expiryDetail({ expires_at_utc: 0 }), "—");
+  assert.equal(usFormatAdapter.expiryDetail({ expires_at_utc: "   " }), "—");
+  assert.equal(usFormatAdapter.expiryInstant({ expires_at_utc: null }), null);
+  assert.equal(usFormatAdapter.expiryInstant({ expires_at_utc: 0 }), null);
+  assert.equal(usFormatAdapter.expiryInstant({ expires_at_utc: "   " }), null);
+  assert.equal(
+    usFormatAdapter.sortValue(
+      { expires_at_utc: "2026-10-03T12:00:00Z" },
+      "expiry_time",
+    ),
+    Date.parse("2026-10-03T12:00:00Z"),
+  );
   assert.equal(usFormatAdapter.remainingText(4 * 86400 + 7200), "4天");
   assert.equal(usFormatAdapter.remainingText(3 * 86400), "3天0小时");
   assert.equal(usFormatAdapter.remainingText(3599), "59分钟");

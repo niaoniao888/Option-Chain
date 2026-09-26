@@ -189,6 +189,63 @@ for (const market of ["bitcoin", "us-equities"]) {
   }
 }
 
+test("desktop tables share one column width and expiry time sorts by instant", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await mockApi(page);
+  await page.unroute("**/api/v1/bitcoin/snapshot");
+  const earlier = {
+    ...btc.contracts.find((row) => row.side === "CALL" && row.strike === 90000),
+    symbol: "BTC-CALL-90000-EARLIER",
+    expiry_ms: now + 86400000,
+  };
+  await page.route("**/api/v1/bitcoin/snapshot", (route) =>
+    route.fulfill({ json: { ...btc, contracts: [...btc.contracts, earlier] } }),
+  );
+  await page.goto("/bitcoin/desktop/");
+  const measure = (selector) =>
+    page.locator(selector).evaluate((table) => ({
+      width: table.getBoundingClientRect().width,
+      columns: [...table.querySelectorAll("thead tr:first-child th")].map(
+        (cell) => cell.getBoundingClientRect().width,
+      ),
+    }));
+  const chain = await measure(".chain-table");
+  expect(chain.width).toBeCloseTo(1200, 0);
+  for (const width of chain.columns) expect(width).toBeCloseTo(1200 / 7, 0);
+  await expect(page.locator(".floating-quote")).toHaveCSS("width", "200px");
+
+  await page.locator('[data-view="price"]').click();
+  await page.locator('#priceHead [data-sort="expiry_time"]').click();
+  await expect(
+    page.locator('#priceHead th[aria-sort="ascending"]'),
+  ).toContainText("到期时间");
+  await expect(page.locator("#priceBody tr")).toHaveCount(2);
+  await expect(page.locator("#priceBody tr td:last-child").first()).toHaveText(
+    "2026-10-02 20:00",
+  );
+  const price = await measure(".price-table");
+  expect(price.width).toBeCloseTo((1200 / 7) * 5, 0);
+  for (const width of price.columns) expect(width).toBeCloseTo(1200 / 7, 0);
+
+  await page.locator('[data-view="ranking"]').click();
+  await expect(page.locator("#rankingHead th")).toHaveCount(6);
+  await expect(page.locator("#rankingHead th:last-child")).toContainText(
+    "到期时间",
+  );
+  await page.locator('#rankingHead [data-sort="expiry_time"]').click();
+  await expect(
+    page.locator('#rankingHead th[aria-sort="ascending"]'),
+  ).toContainText("到期时间");
+  await expect(
+    page.locator("#rankingBody tr td:last-child").first(),
+  ).toHaveText("2026-10-02 20:00");
+  const ranking = await measure(".ranking-table");
+  expect(ranking.width).toBeCloseTo((1200 / 7) * 6, 0);
+  for (const width of ranking.columns) expect(width).toBeCloseTo(1200 / 7, 0);
+});
+
 test("restored price groups, compact mobile menus and quotes", async ({
   page,
 }) => {
@@ -634,10 +691,10 @@ test("US sorting pagination and symbol state stay isolated", async ({
     "1",
   );
   await page.locator('[data-view="price"]').click();
-  await page.locator('#priceHead [data-sort="remaining_seconds"]').click();
+  await page.locator('#priceHead [data-sort="expiry_time"]').click();
   await expect(
     page.locator(
-      '#priceHead th[aria-sort="ascending"] [data-sort="remaining_seconds"]',
+      '#priceHead th[aria-sort="ascending"] [data-sort="expiry_time"]',
     ),
   ).toBeVisible();
   await page.locator("#symbolSelect").selectOption("AAPL");

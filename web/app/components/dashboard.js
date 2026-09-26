@@ -93,6 +93,14 @@ const rankingLabels = {
   annualized_pct: "年化",
   exercise_probability_pct: "行权概率",
   remaining_seconds: "剩余时间",
+  expiry_time: "到期时间",
+};
+const expiryTimeHtml = (adapter, row) => {
+  const text = adapter.expiryDetail?.(row) ?? "—",
+    match = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/.exec(text);
+  return match
+    ? `<span class="expiry-time"><span>${match[1]}</span> <span>${match[2]}</span></span>`
+    : escapeHtml(text);
 };
 const annualMetric = (adapter, row) =>
   adapter.annualHtml?.(row) ?? percent(row?.annualized_pct);
@@ -530,7 +538,7 @@ export class Dashboard {
       sorted
         .map(
           (row) =>
-            `<tr><td>${compactDateHtml(expiryLabel(this.adapter, this.adapter.expiry(row), rows))}</td><td>${annualMetric(this.adapter, row)}</td><td>${periodMetric(this.adapter, row, spot)}</td><td>${probabilityMetric(this.adapter, row)}</td><td>${remainingText(this.adapter, row.remaining_seconds)}</td></tr>`,
+            `<tr><td>${compactDateHtml(expiryLabel(this.adapter, this.adapter.expiry(row), rows))}</td><td>${annualMetric(this.adapter, row)}</td><td>${periodMetric(this.adapter, row, spot)}</td><td>${probabilityMetric(this.adapter, row)}</td><td>${expiryTimeHtml(this.adapter, row)}</td></tr>`,
         )
         .join("") ||
       '<tr><td colspan="5">该方向与行权价暂无可显示指标</td></tr>';
@@ -576,6 +584,7 @@ export class Dashboard {
         return probabilityMetric(this.adapter, row);
       if (key === "remaining_seconds")
         return remainingText(this.adapter, row.remaining_seconds);
+      if (key === "expiry_time") return expiryTimeHtml(this.adapter, row);
       return "—";
     };
     this.$("rankingBody").innerHTML =

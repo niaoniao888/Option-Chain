@@ -27,6 +27,7 @@
   --button-atm-border: #e3c36c;
   --button-atm-text: #765207;
   --shadow: 0 8px 24px rgba(22, 48, 82, 0.08);
+  --table-column-width: calc(1200px / 7);
   font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
@@ -185,7 +186,7 @@ main {
   bottom: 24px;
   display: grid;
   align-content: center;
-  width: 250px;
+  width: 200px;
   height: 100px;
   padding: 16px 20px;
   border: 1px solid var(--line);
@@ -480,13 +481,14 @@ main {
   max-height: 65vh;
 }
 .chain-table {
+  width: calc(var(--table-column-width) * 7);
   min-width: 1200px;
 }
 .price-table {
-  width: 725px;
+  width: calc(var(--table-column-width) * 5);
 }
 .ranking-table {
-  width: 100%;
+  width: calc(var(--table-column-width) * 6);
 }
 table {
   margin: auto;
@@ -589,20 +591,8 @@ th button {
   padding-top: 2px;
   padding-bottom: 2px;
 }
-.price-table th:nth-child(1) {
-  width: 150px;
-}
-.price-table th:nth-child(2) {
-  width: 175px;
-}
-.price-table th:nth-child(3) {
-  width: 130px;
-}
-.price-table th:nth-child(4) {
-  width: 120px;
-}
-.price-table th:nth-child(5) {
-  width: 150px;
+.expiry-time span + span {
+  margin-left: 0.35em;
 }
 .pagination {
   display: flex;
@@ -797,20 +787,12 @@ footer a {
     min-width: 0;
     font-size: clamp(11px, 2.7vw, 12px);
   }
-  .price-table th:nth-child(1) {
-    width: 21%;
-  }
-  .price-table th:nth-child(2) {
-    width: 24%;
-  }
-  .price-table th:nth-child(3) {
-    width: 18%;
-  }
-  .price-table th:nth-child(4) {
-    width: 16%;
-  }
+  .price-table th:nth-child(1),
+  .price-table th:nth-child(2),
+  .price-table th:nth-child(3),
+  .price-table th:nth-child(4),
   .price-table th:nth-child(5) {
-    width: 21%;
+    width: 20%;
   }
   .price-table th,
   .ranking-table th,
@@ -819,6 +801,12 @@ footer a {
     padding: 7px 2px;
     font-size: inherit;
     overflow-wrap: normal;
+  }
+  .expiry-time span {
+    display: block;
+  }
+  .expiry-time span + span {
+    margin-left: 0;
   }
   .desktop-label {
     display: none;

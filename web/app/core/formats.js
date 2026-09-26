@@ -50,6 +50,28 @@ export const dateTime = (value) => {
   const get = (type) => parts.find((part) => part.type === type)?.value || "";
   return `${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
 };
+export const chinaDateTimeMinute = (value) => {
+  const time =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Date.parse(value)
+        : NaN;
+  if (!finite(time)) return "—";
+  const instant = new Date(time);
+  if (!Number.isFinite(instant.getTime())) return "—";
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(instant);
+  const get = (type) => parts.find((part) => part.type === type)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
+};
 export const escapeHtml = (value) =>
   String(value ?? "").replace(
     /[&<>'"]/g,

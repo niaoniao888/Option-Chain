@@ -8,6 +8,7 @@ const SORTS = new Set([
   "annualized_pct",
   "exercise_probability_pct",
   "remaining_seconds",
+  "expiry_time",
 ]);
 
 export function safeGet(storage, key) {
@@ -57,11 +58,13 @@ export function normalizeUi(input = {}) {
       ? value
       : null;
   const migrateKey = (key) =>
-    key === "delta"
-      ? "exercise_probability_pct"
-      : ["expiration_date", "expiry_ms"].includes(key)
-        ? "expiry"
-        : key;
+    key === "remaining_seconds"
+      ? "expiry_time"
+      : key === "delta"
+        ? "exercise_probability_pct"
+        : ["expiration_date", "expiry_ms"].includes(key)
+          ? "expiry"
+          : key;
   const migrateSort = (sort) =>
     sort ? { ...sort, key: migrateKey(sort.key) } : sort;
   const priceSort = migrateSort(input.priceSort);
@@ -158,8 +161,7 @@ export function applySort(currentState, sortName, key) {
     Object.assign(sort, {
       key,
       direction:
-        sortName === "priceSort" &&
-        ["expiry", "remaining_seconds"].includes(key)
+        key === "expiry_time" || (sortName === "priceSort" && key === "expiry")
           ? "asc"
           : "desc",
     });

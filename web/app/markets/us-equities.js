@@ -1,5 +1,10 @@
 import { fetchJson } from "../core/polling.js";
-import { finite, number, percent } from "../core/formats.js";
+import {
+  chinaDateTimeMinute,
+  finite,
+  number,
+  percent,
+} from "../core/formats.js";
 import { mergeSnapshot } from "../core/model.js";
 import { safeGet, safeSet } from "../core/state.js";
 
@@ -262,7 +267,7 @@ export function createUsAdapter({ basePath = "", mode, storage }) {
       "period_return_pct",
       "annualized_pct",
       "exercise_probability_pct",
-      "remaining_seconds",
+      "expiry_time",
     ],
     priceAnnualLabel() {
       return "参考年化";
@@ -418,7 +423,9 @@ export function createUsAdapter({ basePath = "", mode, storage }) {
     },
     splitExpiries: splitUsExpiries,
     sortValue(row, key) {
-      return key === "expiry" ? row.expiration_date : row[key];
+      if (key === "expiry") return row.expiration_date;
+      if (key === "expiry_time") return this.expiryInstant(row);
+      return row[key];
     },
     periodParts(row, spot) {
       const relative =
@@ -434,20 +441,13 @@ export function createUsAdapter({ basePath = "", mode, storage }) {
       return percent(row?.exercise_probability_pct, 1);
     },
     expiryDetail(row) {
-      const value = Date.parse(row?.expires_at_utc);
-      if (!Number.isFinite(value)) return row?.expiration_date || "—";
-      const parts = new Intl.DateTimeFormat("zh-CN", {
-        timeZone: "Asia/Shanghai",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }).formatToParts(new Date(value));
-      const get = (type) =>
-        parts.find((part) => part.type === type)?.value || "";
-      return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
+      return chinaDateTimeMinute(this.expiryInstant(row));
+    },
+    expiryInstant(row) {
+      if (typeof row?.expires_at_utc !== "string" || !row.expires_at_utc.trim())
+        return null;
+      const value = Date.parse(row.expires_at_utc);
+      return Number.isFinite(value) ? value : null;
     },
     expiryDetailFor(value, rows = []) {
       const matching = rows.filter((row) => row.expiration_date === value),
