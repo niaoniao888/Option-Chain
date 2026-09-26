@@ -78,7 +78,9 @@ Windows loopback，对快照 API 发起 100 次请求，并发 8：无错误；G
 
 本轮在 Windows 使用外层项目虚拟环境完成 `compileall` 和 194 项 Python 测试，结果为 193 通过、1 项仅适用于 POSIX 大小写路径的测试按平台跳过；两个 Node 行为测试通过。新增归档测试覆盖完整恢复、路径穿越、软/硬链接、重复成员、无效 JSON、空包、仅含任一主文件、压缩流上限，并核对失败时两个原文件字节不变。
 
-本机仍没有 Docker，Ubuntu 24.04 x86_64 容器测试、从正式 tar 包构建、根路径/子路径、非 root、只读根文件系统、命名卷重建、优雅退出、跨容器单例锁及 GitHub Release job 均已写入 CI，但尚未实际执行。`npm run format:check` 在当前基线的 17 个既有前端文件上报告 Prettier 差异；本轮没有修改这些前端文件，不能把该检查记为通过。正式发布必须等待提交后的全部 GitHub Actions 通过。
+本机仍没有 Docker。Ubuntu 24.04 x86_64 容器测试、从正式 tar 包构建、根路径/子路径、非 root、只读根文件系统、命名卷重建、优雅退出、跨容器单例锁及 GitHub Release job 均已写入 CI；首次运行的已验证范围和中断点见下段，完整流程尚未通过。`npm run format:check` 在当前基线的 17 个既有前端文件上报告 Prettier 差异；本轮没有修改这些前端文件，不能把该检查记为通过。正式发布必须等待提交后的全部 GitHub Actions 通过。
+
+首次真实 Linux CI（run `36238774387`，Docker job `108395291561`）已实际通过包内构建、启动、HTTP、UID 10001、自选写入和首次停止步骤，随后因测试原先只接受退出码 0 而失败。固定的 Uvicorn 0.54 在完成 SIGTERM 优雅关闭后返回 143；CI 已改为仅接受 0 或 143，并同时强制 `OOMKilled=false`、日志包含 `Application shutdown complete.`，明确拒绝 137 或其他退出码。该修正后的完整容器流程仍待下一次 CI 复验，不能据首次运行宣称全部容器门禁通过。
 
 ## 2026-09-26 统一平台验收
 

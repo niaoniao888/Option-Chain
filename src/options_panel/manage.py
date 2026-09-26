@@ -92,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
                 if document["revision"] != args.revision:
                     raise ValueError("导入文件 revision 与 --revision 不一致")
                 result = store.update(document["sections"], args.revision)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print(json.dumps(result, ensure_ascii=True, indent=2))
         return 0
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"错误：{exc}", file=sys.stderr)

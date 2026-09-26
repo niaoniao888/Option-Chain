@@ -195,6 +195,16 @@ test("restored price groups, compact mobile menus and quotes", async ({
   await page.setViewportSize({ width: 1280, height: 900 });
   await mockApi(page);
   await page.goto("/bitcoin/desktop/");
+  for (const selector of [
+    ".chain-table td.itm",
+    ".chain-table td.otm",
+    ".chain-table td.atm:not(.sticky-strike)",
+    ".sticky-strike.atm",
+    ".sticky-strike.below",
+    ".sticky-strike.above",
+  ]) {
+    await expect(page.locator(selector).first()).toBeVisible();
+  }
   const lightChainColors = await page.evaluate(() => ({
     itm: getComputedStyle(document.querySelector(".chain-table td.itm"))
       .backgroundColor,

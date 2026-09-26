@@ -26,7 +26,13 @@ class ManagementCliTests(unittest.TestCase):
             self.assertEqual(main(["--data-dir", str(data), "guide", "revision"]), 0)
             document["sections"][0]["topics"][0]["body"] = "Linux 导入测试"
             export.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
-            self.assertEqual(main(["--data-dir", str(data), "guide", "import", str(export), "--revision", document["revision"]]), 0)
+            raw_output = io.BytesIO()
+            ascii_stdout = io.TextIOWrapper(raw_output, encoding="ascii", errors="strict")
+            with mock.patch("sys.stdout", ascii_stdout):
+                result = main(["--data-dir", str(data), "guide", "import", str(export), "--revision", document["revision"]])
+                ascii_stdout.flush()
+            self.assertEqual(result, 0)
+            self.assertEqual(json.loads(raw_output.getvalue().decode("ascii"))["sections"][0]["topics"][0]["body"], "Linux 导入测试")
             self.assertEqual(GuideStore(data / "options-guide.json").get()["sections"][0]["topics"][0]["body"], "Linux 导入测试")
 
     def test_runtime_archive_rejects_traversal_and_restores(self):

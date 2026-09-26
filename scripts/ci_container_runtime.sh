@@ -2,9 +2,26 @@
 set -eu
 
 [ "$(uname -m)" = "x86_64" ] || { echo "CI requires Linux x86_64" >&2; exit 1; }
+[ ! -e .env ] && [ ! -L .env ] || {
+  echo "refusing to overwrite existing .env; run this CI script only in a fresh extracted disposable directory" >&2
+  exit 1
+}
 export COMPOSE_PROJECT_NAME=options-panel-ci
 cleanup() { docker compose down --remove-orphans >/dev/null 2>&1 || true; }
-trap cleanup EXIT INT TERM
+finish() {
+  code=$1
+  trap - EXIT
+  if [ "$code" -ne 0 ]; then
+    printf '%s\n' "container runtime test failed (exit=$code); bounded diagnostics follow" >&2
+    docker compose ps >&2 || true
+    docker compose logs --no-color --tail 120 options-panel >&2 || true
+  fi
+  cleanup
+  exit "$code"
+}
+trap 'finish $?' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 wait_health() {
   attempts=0
   until docker compose exec -T options-panel python -c "import os,urllib.request; from options_panel.config import normalize_base_path; p=normalize_base_path(os.environ.get('OPTIONS_BASE_PATH','')); urllib.request.urlopen('http://127.0.0.1:8780'+p+'/healthz',timeout=5).read()" >/dev/null 2>&1; do
@@ -58,7 +75,14 @@ fi
 revision=$(docker compose exec -T options-panel python -m options_panel.manage watchlist revision)
 docker compose exec -T options-panel python -m options_panel.manage watchlist add AAPL --revision "$revision" >/dev/null
 ./scripts/options-panel.sh stop
-[ "$(docker inspect --format '{{.State.ExitCode}}' "$(docker compose ps --all -q options-panel)")" = 0 ]
+container_id=$(docker compose ps --all -q options-panel)
+exit_code=$(docker inspect --format '{{.State.ExitCode}}' "$container_id")
+oom_killed=$(docker inspect --format '{{.State.OOMKilled}}' "$container_id")
+shutdown_logs=$(docker compose logs --no-color --tail 120 options-panel)
+case "$exit_code" in 0|143) ;; *) echo "unexpected graceful-stop exit=$exit_code" >&2; exit 1 ;; esac
+[ "$oom_killed" = false ] || { echo "container was OOM-killed" >&2; exit 1; }
+printf '%s' "$shutdown_logs" | grep -Fq 'Application shutdown complete.'
+printf '%s\n' "graceful-stop exit=$exit_code oom_killed=$oom_killed"
 docker compose up -d --build --force-recreate options-panel
 wait_health
 ./scripts/options-panel.sh status
