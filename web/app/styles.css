@@ -532,8 +532,11 @@ th button {
 .sticky-strike {
   position: sticky;
   left: 0;
-  z-index: 5;
+  z-index: 2;
   background: var(--strike);
+}
+thead .sticky-strike {
+  z-index: 6;
 }
 .market-bitcoin .chain-table td.itm {
   background: var(--btc-itm);
@@ -544,14 +547,14 @@ th button {
 .market-bitcoin .chain-table td.atm {
   background: var(--btc-atm);
 }
-.market-bitcoin .chain-table td.sticky-strike.atm {
+.chain-table td.sticky-strike.atm {
   background: var(--strike-atm);
 }
-.market-bitcoin .sticky-strike.below,
-.market-bitcoin .sticky-strike.above {
+.sticky-strike.below,
+.sticky-strike.above {
   background: var(--strike-high);
 }
-.market-bitcoin .sticky-strike.below {
+.sticky-strike.below {
   background: var(--strike-low);
 }
 .sticky-strike small,

@@ -138,6 +138,49 @@ async function expectMobileTableFits(page, panel, tableSelector) {
   }
 }
 
+async function expectStickyHeaderUncovered(page, panel) {
+  const result = await page
+    .locator(`[data-panel="${panel}"] .table-wrap`)
+    .evaluate(async (wrap) => {
+      wrap.style.maxHeight = "180px";
+      wrap.scrollTop = wrap.scrollHeight;
+      wrap.scrollLeft = wrap.scrollWidth;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      const wrapBox = wrap.getBoundingClientRect();
+      const cells = [...wrap.querySelectorAll("thead th")]
+        .map((cell) => {
+          const box = cell.getBoundingClientRect();
+          const left = Math.max(box.left, wrapBox.left);
+          const right = Math.min(box.right, wrapBox.right);
+          const top = Math.max(box.top, wrapBox.top);
+          const bottom = Math.min(box.bottom, wrapBox.bottom);
+          if (right - left < 4 || bottom - top < 4) return null;
+          const hit = document.elementFromPoint(
+            left + (right - left) / 2,
+            top + (bottom - top) / 2,
+          );
+          return {
+            text: cell.textContent.trim(),
+            hitHeader: hit?.closest("th") === cell,
+          };
+        })
+        .filter(Boolean);
+
+      return {
+        clientHeight: wrap.clientHeight,
+        scrollHeight: wrap.scrollHeight,
+        scrollTop: wrap.scrollTop,
+        cells,
+      };
+    });
+
+  expect(result.scrollHeight).toBeGreaterThan(result.clientHeight);
+  expect(result.scrollTop).toBeGreaterThan(0);
+  expect(result.cells.length).toBeGreaterThan(0);
+  expect(result.cells.filter((cell) => !cell.hitHeader)).toEqual([]);
+}
+
 async function expiryTriggerGeometry(page) {
   return page.locator("#expiryTrigger").evaluate((button) => {
     const value = button.querySelector("#expiryValue");
@@ -195,6 +238,137 @@ for (const market of ["bitcoin", "us-equities"]) {
         );
       });
     }
+  }
+}
+
+test("strike column colors use shared variables in every market layout", async ({
+  page,
+}) => {
+  await mockApi(page);
+  for (const mode of ["desktop", "mobile"]) {
+    await page.setViewportSize({
+      width: mode === "mobile" ? 390 : 1280,
+      height: mode === "mobile" ? 844 : 900,
+    });
+    for (const theme of ["light", "dark"]) {
+      const colorsByMarket = {};
+      for (const market of ["bitcoin", "us-equities"]) {
+        await page.goto(`/${market}/${mode}/`);
+        await page.locator(`button[data-theme="${theme}"]`).click();
+        for (const selector of [
+          ".sticky-strike.atm",
+          ".sticky-strike.below",
+          ".sticky-strike.above",
+        ]) {
+          await expect(page.locator(selector).first()).toBeVisible();
+        }
+        const colors = await page.evaluate(() => {
+          const resolveBackground = (variable) => {
+            const probe = document.createElement("span");
+            probe.style.background = `var(${variable})`;
+            document.body.append(probe);
+            const color = getComputedStyle(probe).backgroundColor;
+            probe.remove();
+            return color;
+          };
+          return {
+            actual: {
+              atm: getComputedStyle(
+                document.querySelector(".sticky-strike.atm"),
+              ).backgroundColor,
+              below: getComputedStyle(
+                document.querySelector(".sticky-strike.below"),
+              ).backgroundColor,
+              above: getComputedStyle(
+                document.querySelector(".sticky-strike.above"),
+              ).backgroundColor,
+            },
+            expected: {
+              atm: resolveBackground("--strike-atm"),
+              below: resolveBackground("--strike-low"),
+              above: resolveBackground("--strike-high"),
+            },
+          };
+        });
+        expect(colors.actual).toEqual(colors.expected);
+        colorsByMarket[market] = colors.actual;
+      }
+      expect(colorsByMarket["us-equities"]).toEqual(colorsByMarket.bitcoin);
+    }
+  }
+});
+
+for (const market of ["bitcoin", "us-equities"]) {
+  for (const mode of ["desktop", "mobile"]) {
+    test(`sticky table headers stay above rows ${market} ${mode}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({
+        width: mode === "mobile" ? 390 : 1280,
+        height: 900,
+      });
+      await mockApi(page);
+
+      const makeDenseContracts = (snapshot, marketId) =>
+        ["CALL", "PUT"].flatMap((side) =>
+          Array.from({ length: 12 }, (_, expiryIndex) =>
+            Array.from({ length: 12 }, (_, strikeIndex) => {
+              const source = snapshot.contracts.find(
+                (row) => row.side === side,
+              );
+              const expiresAt = new Date(
+                now + (expiryIndex + 1) * 86400000 + 1800000,
+              );
+              const strike =
+                marketId === "bitcoin"
+                  ? 85000 + strikeIndex * 1000
+                  : 175 + strikeIndex * 5;
+              return marketId === "bitcoin"
+                ? {
+                    ...source,
+                    symbol: `BTC-${side}-${expiryIndex}-${strike}`,
+                    strike,
+                    expiry_ms: expiresAt.getTime(),
+                    remaining_seconds: (expiryIndex + 1) * 86400 + 1800,
+                  }
+                : {
+                    ...source,
+                    contract_symbol: `AAPL-${side}-${expiryIndex}-${strike}`,
+                    strike,
+                    expiration_date: expiresAt.toISOString().slice(0, 10),
+                    expires_at_utc: expiresAt.toISOString(),
+                    remaining_seconds: (expiryIndex + 1) * 86400 + 1800,
+                  };
+            }),
+          ).flat(),
+        );
+
+      await page.unroute("**/api/v1/bitcoin/snapshot");
+      await page.unroute("**/api/v1/us-equities/snapshot?**");
+      await page.route("**/api/v1/bitcoin/snapshot", (route) =>
+        route.fulfill({
+          json: {
+            ...btc,
+            contracts: makeDenseContracts(btc, "bitcoin"),
+          },
+        }),
+      );
+      await page.route("**/api/v1/us-equities/snapshot?**", (route) =>
+        route.fulfill({
+          json: {
+            ...us,
+            contracts: makeDenseContracts(us, "us-equities"),
+          },
+        }),
+      );
+
+      await page.goto(`/${market}/${mode}/`);
+      for (const view of ["chain", "price", "ranking"]) {
+        await page.locator(`[data-view="${view}"]`).click();
+        await expect(page.locator(`#${view}Body tr`).first()).toBeVisible();
+        await expectStickyHeaderUncovered(page, view);
+      }
+    });
   }
 }
 
