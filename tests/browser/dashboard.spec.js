@@ -138,6 +138,37 @@ async function expectMobileTableFits(page, panel, tableSelector) {
   }
 }
 
+async function expiryTriggerGeometry(page) {
+  return page.locator("#expiryTrigger").evaluate((button) => {
+    const value = button.querySelector("#expiryValue");
+    const arrow = button.querySelector("span:last-child");
+    const range = document.createRange();
+    range.selectNodeContents(value);
+    const textRects = [...range.getClientRects()];
+    const buttonRect = button.getBoundingClientRect();
+    const arrowRect = arrow.getBoundingClientRect();
+    return {
+      buttonWidth: buttonRect.width,
+      textLineCount: new Set(
+        textRects.map((rect) => Math.round(rect.top * 10) / 10),
+      ).size,
+      textRight: Math.max(...textRects.map((rect) => rect.right)),
+      arrowLeft: arrowRect.left,
+      arrowRight: arrowRect.right,
+      buttonRight: buttonRect.right,
+      whiteSpace: getComputedStyle(value).whiteSpace,
+    };
+  });
+}
+
+function expectExpiryTriggerFits(geometry) {
+  expect(geometry.buttonWidth).toBe(112);
+  expect(geometry.textLineCount).toBe(1);
+  expect(geometry.whiteSpace).toBe("nowrap");
+  expect(geometry.textRight).toBeLessThanOrEqual(geometry.arrowLeft);
+  expect(geometry.arrowRight).toBeLessThanOrEqual(geometry.buttonRight);
+}
+
 for (const market of ["bitcoin", "us-equities"]) {
   for (const mode of ["desktop", "mobile"]) {
     for (const theme of ["light", "dark"]) {
@@ -173,10 +204,27 @@ for (const market of ["bitcoin", "us-equities"]) {
       test(`${market} ${mode} ${width}px responsive`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         await mockApi(page);
+        if (mode === "mobile") {
+          await page.route("**/styles.css", async (route) => {
+            const response = await route.fetch();
+            await route.fulfill({
+              response,
+              body: `${await response.text()}\n.font-stress #expiryTrigger { font-family: Arial, sans-serif; font-size: 16px; }`,
+            });
+          });
+        }
         await page.goto(`/${market}/${mode}/`);
         await expect(page.locator("#health")).toHaveText("正常");
         if (mode === "mobile") {
           await expect(page.locator("#expiryValue")).toHaveText("2026-10-03");
+          expectExpiryTriggerFits(await expiryTriggerGeometry(page));
+          await page
+            .locator("html")
+            .evaluate((node) => node.classList.add("font-stress"));
+          expectExpiryTriggerFits(await expiryTriggerGeometry(page));
+          await page
+            .locator("html")
+            .evaluate((node) => node.classList.remove("font-stress"));
           await expect(page.locator("#expiryDetail")).toContainText(
             market === "bitcoin"
               ? "到期时间：2026-10-03 20:30"
