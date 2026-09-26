@@ -41,6 +41,8 @@ class Settings:
     us_collector_enabled: bool = True
     allowed_hosts: tuple[str, ...] = ("127.0.0.1", "localhost", "testserver")
     forwarded_headers: bool = False
+    bitcoin_provider: str = "binance"
+    us_equities_provider: str = "alpaca"
 
     @property
     def web_dir(self) -> Path:
@@ -81,4 +83,6 @@ class Settings:
             us_collector_enabled=_boolean("OPTIONS_US_COLLECTOR_ENABLED", True),
             allowed_hosts=allowed or ("127.0.0.1", "localhost"),
             forwarded_headers=_boolean("OPTIONS_FORWARDED_HEADERS", False),
+            bitcoin_provider=os.getenv("OPTIONS_BITCOIN_PROVIDER", "binance").strip().lower(),
+            us_equities_provider=os.getenv("OPTIONS_US_EQUITIES_PROVIDER", "alpaca").strip().lower(),
         )

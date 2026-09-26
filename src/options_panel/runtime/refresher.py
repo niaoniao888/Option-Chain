@@ -1,19 +1,21 @@
 from __future__ import annotations
-import logging, os, time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
+import logging, time
 from typing import Any, Callable
 import threading
 from options_panel.config import MARKET_INTERVAL, CATALOG_INTERVAL, MAX_BACKOFF
 from options_panel.logging import LOGGER, log_event
-from options_panel.providers.binance import fetch_json, parse_catalog, parse_quotes, parse_index, parse_server_time, parse_marks, parse_open_interest, expiration_code
+from options_panel.providers.binance import fetch_json
+from options_panel.providers.bitcoin_options import BinanceOptionsProvider, BitcoinOptionsProvider
 from options_panel.runtime.snapshot import DashboardState
+from options_panel.runtime.lock import ProcessLock
 
 class Refresher(threading.Thread):
-    def __init__(self, state: DashboardState, fetch: Callable[[str], Any] = fetch_json):
-        super().__init__(name="binance-cache-refresh", daemon=True)
+    def __init__(self, state: DashboardState, fetch: Callable[[str], Any] = fetch_json, *,
+                 provider: BitcoinOptionsProvider | None = None):
+        super().__init__(name="bitcoin-options-cache-refresh", daemon=True)
         self.state = state
         self.fetch = fetch
+        self.provider = provider or BinanceOptionsProvider(fetch)
         self.stop_event = threading.Event()
         self.market_failures = 0
         self.catalog_failures = 0
@@ -28,7 +30,7 @@ class Refresher(threading.Thread):
 
     def refresh_catalog(self) -> bool:
         try:
-            self.state.commit_catalog(parse_catalog(self.fetch("/eapi/v1/exchangeInfo")))
+            self.state.commit_catalog(self.provider.catalog())
             self.catalog_failures = 0
             return True
         except Exception as exc:  # Boundary: network and remote schema failures.
@@ -37,34 +39,16 @@ class Refresher(threading.Thread):
             return False
 
     def fetch_open_interest(self, server_time_ms: int) -> dict[str, dict[str, Any]]:
-        expected_by_expiry: dict[str, set[str]] = {}
-        for contract in self.state.active_contracts(server_time_ms):
-            code = expiration_code(contract["expiry_ms"])
-            expected_by_expiry.setdefault(code, set()).add(contract["symbol"])
-        if not expected_by_expiry:
-            return {}
-        result: dict[str, dict[str, Any]] = {}
-        with ThreadPoolExecutor(max_workers=min(4, len(expected_by_expiry)), thread_name_prefix="binance-oi") as pool:
-            futures = {
-                pool.submit(self.fetch, f"/eapi/v1/openInterest?underlyingAsset=BTC&expiration={code}"): code
-                for code in expected_by_expiry
-            }
-            for future in as_completed(futures):
-                code = futures[future]
-                parsed = parse_open_interest(future.result(), code)
-                for symbol in expected_by_expiry[code]:
-                    if symbol in parsed:
-                        result[symbol] = parsed[symbol]
-        return result
+        return self.provider.open_interest(self.state.active_contracts(server_time_ms), server_time_ms)
 
     def refresh_market(self) -> bool:
         try:
-            quotes = parse_quotes(self.fetch("/eapi/v1/ticker"))
-            index_price = parse_index(self.fetch("/eapi/v1/index?underlying=BTCUSDT"))
-            active_filter_time = parse_server_time(self.fetch("/eapi/v1/time"))
+            quotes = self.provider.quotes()
+            index_price = self.provider.index_price()
+            active_filter_time = self.provider.server_time()
             open_interest = self.fetch_open_interest(active_filter_time)
             try:
-                marks = parse_marks(self.fetch("/eapi/v1/mark"))
+                marks = self.provider.marks()
                 mark_problems = [
                     contract["symbol"] for contract in self.state.active_contracts(active_filter_time)
                     if contract["symbol"] not in marks
@@ -76,7 +60,7 @@ class Refresher(threading.Thread):
             except Exception as exc:
                 marks = {}
                 mark_warning = f"行权概率参数刷新失败：{exc}"
-            final_server_time = parse_server_time(self.fetch("/eapi/v1/time"))
+            final_server_time = self.provider.server_time()
             self.state.commit_market(quotes, index_price, final_server_time, open_interest, marks, mark_warning)
             self.market_failures = 0
             return True
@@ -136,56 +120,3 @@ class Refresher(threading.Thread):
                     }},
                 )
                 self.stop_event.wait(5.0)
-
-
-
-class ProcessLock:
-    """Cross-platform advisory lock held by an open file descriptor."""
-
-    def __init__(self, path: Path):
-        self.path = Path(path)
-        self._handle = None
-
-    def acquire(self) -> None:
-        if self._handle is not None:
-            return
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        handle = self.path.open("a+b")
-        try:
-            handle.seek(0, os.SEEK_END)
-            if handle.tell() == 0:
-                handle.write(b"\0")
-                handle.flush()
-            handle.seek(0)
-            if os.name == "nt":
-                import msvcrt
-                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except (OSError, BlockingIOError) as exc:
-            handle.close()
-            raise RuntimeError("runtime collector already active") from exc
-        self._handle = handle
-
-    def release(self) -> None:
-        handle, self._handle = self._handle, None
-        if handle is None:
-            return
-        try:
-            handle.seek(0)
-            if os.name == "nt":
-                import msvcrt
-                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-        finally:
-            handle.close()
-
-    def __enter__(self):
-        self.acquire()
-        return self
-
-    def __exit__(self, *_):
-        self.release()

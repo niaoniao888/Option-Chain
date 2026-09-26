@@ -1,12 +1,106 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from typing import Any
 
 from options_panel.content.guide_store import GuideStore
 from options_panel.runtime.snapshot import DashboardState
+from options_panel.runtime.lock import ProcessLock
+from options_panel.runtime.market import MarketDescriptor, SnapshotEnvelope
+from options_panel.runtime.refresher import Refresher
+from options_panel.providers.bitcoin_options import BinanceOptionsProvider, BitcoinOptionsProvider
+
+
+_HELD_COLLECTOR_LOCKS: list[ProcessLock] = []
 
 
 @dataclass
 class BitcoinModule:
     state: DashboardState
     guide: GuideStore
+
+
+class BitcoinRuntime:
+    descriptor = MarketDescriptor(
+        market_id="bitcoin", title="比特币期权面板", provider_id="binance",
+        provider_name="Binance Options", default_instrument="BTCUSDT",
+        desktop_path="/bitcoin/desktop/", mobile_path="/bitcoin/mobile/",
+        capabilities=("snapshot", "health", "options-guide"),
+    )
+
+    def __init__(self, state: DashboardState, guide: GuideStore, runtime_dir, *,
+                 collector_enabled: bool = True, provider_id: str = "binance",
+                 provider_name: str = "Binance Options", provider: BitcoinOptionsProvider | None = None,
+                 refresher_factory=Refresher):
+        if refresher_factory is None:
+            raise ValueError("bitcoin provider requires a collector factory")
+        self.descriptor = replace(type(self).descriptor, provider_id=provider_id, provider_name=provider_name)
+        self.state = state
+        self.guide = guide
+        self.module = BitcoinModule(state, guide)
+        self.runtime_dir = runtime_dir
+        self.collector_enabled = collector_enabled
+        self.provider_id = provider_id
+        if provider is None and provider_id != "binance":
+            raise ValueError(f"bitcoin provider adapter is required: {provider_id}")
+        self.provider = BinanceOptionsProvider() if provider is None else provider
+        self.refresher_factory = refresher_factory
+        self._thread: Any | None = None
+        self._collector_lock: ProcessLock | None = None
+        self.startup_error: str | None = None
+
+    def start(self) -> None:
+        if not self.collector_enabled:
+            return
+        if self._thread is not None:
+            if self._thread.is_alive():
+                return
+            if self._collector_lock is not None:
+                if self._collector_lock in _HELD_COLLECTOR_LOCKS:
+                    _HELD_COLLECTOR_LOCKS.remove(self._collector_lock)
+                self._collector_lock.release()
+            self._thread = self._collector_lock = None
+        lock = ProcessLock(self.runtime_dir / "collector.lock")
+        try:
+            lock.acquire()
+            thread = self.refresher_factory(self.state, provider=self.provider)
+            thread.start()
+        except Exception as exc:
+            lock.release()
+            self.startup_error = f"{type(exc).__name__}: {exc}"
+            raise
+        self._collector_lock, self._thread = lock, thread
+        self.startup_error = None
+
+    def stop(self) -> None:
+        thread, lock = self._thread, self._collector_lock
+        if thread is None:
+            return
+        thread.stop_event.set()
+        thread.join(timeout=15)
+        if thread.is_alive():
+            if lock is not None and lock not in _HELD_COLLECTOR_LOCKS:
+                _HELD_COLLECTOR_LOCKS.append(lock)
+            return
+        if lock is not None:
+            if lock in _HELD_COLLECTOR_LOCKS:
+                _HELD_COLLECTOR_LOCKS.remove(lock)
+            lock.release()
+        self._thread = self._collector_lock = None
+
+    def health(self) -> dict[str, Any]:
+        value = self.state.health()
+        return {**value, "provider": self.provider_id,
+                "collector_enabled": self.collector_enabled,
+                "collector_running": bool(self._thread and self._thread.is_alive())}
+
+    def snapshot_envelope(self, instrument: str | None = None) -> SnapshotEnvelope:
+        payload = self.state.snapshot()
+        status = payload.get("status") or {}
+        return SnapshotEnvelope(
+            market=self.descriptor.market_id, provider=self.provider_id,
+            instrument=instrument or self.descriptor.default_instrument,
+            version=status.get("version"), received_at=payload.get("fetched_at"),
+            calculated_at=payload.get("market_generation_ms"),
+            status=status.get("status", "unknown"), payload=payload,
+        )
