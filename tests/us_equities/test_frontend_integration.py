@@ -85,6 +85,20 @@ require("./web/us-equities/guide.js");
             self.assertIn("BTC", source)
             self.assertIn("美股", source)
 
+    def test_three_market_views_have_no_guide_loader_and_accessible_theme_icons(self):
+        for path in (ROOT / "web" / "desktop" / "index.html", ROOT / "web" / "mobile" / "index.html", WEB / "index.html"):
+            source = path.read_text(encoding="utf-8")
+            self.assertNotIn('data-view="guide"', source)
+            self.assertNotIn('id="guideView"', source)
+            self.assertNotIn('/guide.js', source)
+            self.assertNotIn('/guide.css', source)
+            self.assertIn('aria-label="浅色"', source)
+            self.assertIn('aria-label="深色"', source)
+            self.assertEqual(source.count('<svg '), 2)
+            self.assertIn('market-shell.css?v=20260926-ui2', source)
+            self.assertIn('>BTC期权</a>', source)
+            self.assertIn('>美股期权</a>', source)
+
     def test_admin_boots_with_watchlist_document_without_shadowing_dom(self):
         result = self.run_node(r'''
 const elements=new Map();

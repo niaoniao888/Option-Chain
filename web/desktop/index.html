@@ -5,12 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>BTC 期权看板</title>
   <link rel="stylesheet" href="./style.css">
-  <link rel="stylesheet" href="../shared/guide.css">
   <link rel="stylesheet" href="../shared/period-return.css">
-  <link rel="stylesheet" href="../../shared/market-shell.css">
+  <link rel="stylesheet" href="../../shared/market-shell.css?v=20260926-ui2">
 </head>
 <body>
-  <nav class="market-tabs" aria-label="市场切换"><a class="active" aria-current="page" href="./">BTC 期权看板</a><a href="../../us-equities/desktop/">美股期权看板</a></nav>
+  <nav class="market-tabs" aria-label="市场切换"><a class="active" aria-current="page" href="./">BTC期权</a><a href="../../us-equities/desktop/">美股期权</a></nav>
   <header class="hero">
     <div class="hero-summary"><h1>BTC 期权看板</h1>
     <section class="hero-status" aria-label="数据状态">
@@ -21,8 +20,8 @@
     </div>
     <div class="hero-tools">
       <div class="theme-switcher" role="group" aria-label="页面颜色主题">
-        <button type="button" data-theme-choice="light" aria-pressed="true">浅色</button>
-        <button type="button" data-theme-choice="dark" aria-pressed="false">深色</button>
+        <button type="button" data-theme-choice="light" aria-label="浅色" title="浅色" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg></button>
+        <button type="button" data-theme-choice="dark" aria-label="深色" title="深色" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8 8 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/></svg></button>
       </div>
     </div>
   </header>
@@ -34,7 +33,6 @@
       <button class="tab active" data-view="chain">期权链</button>
       <button class="tab" data-view="price">价格年化</button>
       <button class="tab" data-view="ranking">年化排行</button>
-      <button class="tab" data-view="guide">期权说明</button>
     </nav>
 
     <section id="chainView" class="panel">
@@ -60,18 +58,10 @@
       <div class="ranking-pagination" aria-label="排行分页"><button type="button" id="rankingPrev" class="page-arrow" aria-label="上一页">&lt;</button><div id="rankingPages" class="ranking-pages"></div><button type="button" id="rankingNext" class="page-arrow" aria-label="下一页">&gt;</button></div>
     </section>
 
-    <section id="guideView" class="panel guide-view hidden" data-guide-mode="readonly" aria-labelledby="guideTitle">
-      <div class="guide-head">
-        <div><h2 id="guideTitle">期权说明</h2><p id="guideMeta" class="guide-meta">打开本页后加载</p></div>
-      </div>
-      <p id="guideMessage" class="guide-message" role="status" aria-live="polite"></p>
-      <div id="guideContent" class="guide-content"></div>
-    </section>
   </main>
   <footer>数据来源：币安（<a href="https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data" target="_blank" rel="noopener noreferrer">Binance Options EAPI</a>）</footer>
   <div class="price-card" aria-label="当前 BTC/USDT"><span>BTC/USDT</span><strong id="indexPrice">—</strong></div>
-  <script src="../shared/guide.js" defer></script>
   <script src="../shared/period-return.js" defer></script>
-  <script src="./app.js" defer></script>
+  <script src="./app.js?v=20260926-ui2" defer></script>
 </body>
 </html>

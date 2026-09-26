@@ -218,7 +218,7 @@ process.stdout.write(JSON.stringify({
         self.assertEqual(data["valid"]["priceStrikes"], {"CALL": 148.5, "PUT": 150})
         self.assertEqual(data["valid"]["rankingSort"], {"key": "strike", "direction": "asc"})
         self.assertEqual(data["valid"]["mobileView"], "ranking")
-        self.assertEqual([(item["mobileView"], item["selectedExpiry"], item["priceSide"]) for item in data["switched"]], [("price","2026-10-10","PUT"),("ranking","2026-10-17","CALL"),("guide",None,"CALL")])
+        self.assertEqual([(item["mobileView"], item["selectedExpiry"], item["priceSide"]) for item in data["switched"]], [("price","2026-10-10","PUT"),("ranking","2026-10-17","CALL"),("chain",None,"CALL")])
         self.assertEqual(data["actualLoads"], 3)
         self.assertEqual(data["pickerState"], {"emptyOpen":False,"filledOpen":True,"disabled":False,"otherClosed":1})
         self.assertEqual(data["pages"], [[1,2],[1,2,3,"ellipsis",10],[1,"ellipsis",4,5,6,"ellipsis",10],[1,"ellipsis",8,9,10]])

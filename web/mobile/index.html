@@ -7,14 +7,13 @@
   <meta name="theme-color" content="#173763">
   <title>BTC 期权看板</title>
   <link rel="stylesheet" href="./mobile.css">
-  <link rel="stylesheet" href="../shared/guide.css">
   <link rel="stylesheet" href="../shared/period-return.css">
-  <link rel="stylesheet" href="../../shared/market-shell.css">
+  <link rel="stylesheet" href="../../shared/market-shell.css?v=20260926-ui2">
 </head>
 <body>
-  <nav class="market-tabs" aria-label="市场切换"><a class="active" aria-current="page" href="./">BTC 期权看板</a><a href="../../us-equities/mobile/">美股期权看板</a></nav>
+  <nav class="market-tabs" aria-label="市场切换"><a class="active" aria-current="page" href="./">BTC期权</a><a href="../../us-equities/mobile/">美股期权</a></nav>
   <header class="topbar">
-    <div class="topbar-title"><h1 class="btc-price">BTC：<strong id="indexPrice">—</strong></h1><div class="theme-buttons" role="group" aria-label="颜色主题"><button data-theme-choice="light" aria-pressed="true">浅色</button><button data-theme-choice="dark" aria-pressed="false">深色</button></div></div>
+    <div class="topbar-title"><h1 class="btc-price">BTC：<strong id="indexPrice">—</strong></h1><div class="theme-buttons" role="group" aria-label="颜色主题"><button data-theme-choice="light" aria-label="浅色" title="浅色" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg></button><button data-theme-choice="dark" aria-label="深色" title="深色" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8 8 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/></svg></button></div></div>
     <section class="top-status" aria-label="数据状态">
       <div><span>数据时间</span><b id="fetchedAt">等待数据</b></div>
       <div><span>下次刷新</span><b id="countdown">—</b></div>
@@ -24,7 +23,7 @@
   <main>
     <div id="notice" class="notice hidden" role="alert"></div>
 
-    <nav><button class="tab active" data-view="chain">期权链</button><button class="tab" data-view="price">价格年化</button><button class="tab" data-view="ranking">年化排行</button><button class="tab" data-view="guide">期权说明</button></nav>
+    <nav class="tabs"><button class="tab active" data-view="chain">期权链</button><button class="tab" data-view="price">价格年化</button><button class="tab" data-view="ranking">年化排行</button></nav>
 
     <section id="chainView" class="panel">
       <div class="chain-expiry-controls"><div id="expiryPicker" class="compact-picker expiry-picker"><button type="button" aria-label="选择到期日" id="expiryTrigger" aria-haspopup="listbox" aria-controls="expiryMenu" aria-expanded="false"><span id="expiryValue">—</span><span aria-hidden="true">▼</span></button><div id="expiryMenu" class="picker-menu expiry-menu hidden" role="listbox" aria-label="到期日"></div></div>
@@ -50,15 +49,9 @@
       <div class="ranking-pagination" aria-label="排行分页"><button type="button" id="rankingPrev" class="page-arrow" aria-label="上一页">&lt;</button><div id="rankingPages" class="ranking-pages"></div><button type="button" id="rankingNext" class="page-arrow" aria-label="下一页">&gt;</button></div>
     </section>
 
-    <section id="guideView" class="panel guide-view hidden" data-guide-mode="readonly" aria-labelledby="guideTitle">
-      <div class="guide-head"><div><h2 id="guideTitle">期权说明</h2><p id="guideMeta" class="guide-meta">打开本页后加载</p></div></div>
-      <p id="guideMessage" class="guide-message" role="status" aria-live="polite"></p>
-      <div id="guideContent" class="guide-content"></div>
-    </section>
   </main>
   <footer>数据来源：币安（<a href="https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data" target="_blank" rel="noopener noreferrer">Binance Options EAPI</a>）</footer>
-  <script src="../shared/guide.js" defer></script>
   <script src="../shared/period-return.js" defer></script>
-  <script src="./mobile.js" defer></script>
+  <script src="./mobile.js?v=20260926-ui2" defer></script>
 </body>
 </html>

@@ -448,8 +448,7 @@ function resumePolling(){
 
 document.querySelectorAll(".tab").forEach(button=>button.addEventListener("click",()=>{
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===button));
-  ["chain","price","ranking","guide"].forEach(view=>$(view+"View").classList.toggle("hidden",button.dataset.view!==view));
-  if(button.dataset.view==="guide")window.OptionsGuide?.activate();
+  ["chain","price","ranking"].forEach(view=>$(view+"View").classList.toggle("hidden",button.dataset.view!==view));
 }));
 document.querySelectorAll("[data-theme-choice]").forEach(button=>button.addEventListener("click",()=>applyTheme(button.dataset.themeChoice,true)));
 applyTheme(initialTheme());

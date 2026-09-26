@@ -9,7 +9,8 @@ for (const view of ["desktop", "mobile", "hub"]) {
   const html = fs.readFileSync(path.join(directory, "index.html"), "utf8");
   const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"[^>]*><\/script>/g)];
   const code = scripts.map(match => {
-    const file = view === "hub" ? path.join(directory, path.basename(match[1])) : path.resolve(directory, match[1]);
+    const assetPath = match[1].split(/[?#]/, 1)[0];
+    const file = view === "hub" ? path.join(directory, path.basename(assetPath)) : path.resolve(directory, assetPath);
     return fs.readFileSync(file, "utf8");
   }).join("\n;\n");
   new vm.Script(code, {filename: `${view}-combined-scripts.js`});

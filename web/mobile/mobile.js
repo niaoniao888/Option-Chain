@@ -187,7 +187,7 @@ async function load(){if(state.requestInFlight)return;if(state.pollTimer!==null)
 function resumePolling(){interaction.pointerDown=false;if(!state.requestInFlight){if(state.pollTimer!==null){clearTimeout(state.pollTimer);state.pollTimer=null;}load();}flushPendingRender();}
 
 document.querySelectorAll("[data-theme-choice]").forEach(button=>button.addEventListener("click",()=>setTheme(button.dataset.themeChoice,true)));setTheme(initialTheme());
-const mobileViews=["chain","price","ranking","guide"];
+const mobileViews=["chain","price","ranking"];
 function initialView(){try{const view=localStorage.getItem("btc-options-mobile-view");return mobileViews.includes(view)?view:"chain";}catch(_){return "chain";}}
 function activateView(view,persist=false){
   const selected=mobileViews.includes(view)?view:"chain";
@@ -195,7 +195,6 @@ function activateView(view,persist=false){
   document.querySelectorAll(".tab").forEach(button=>button.classList.toggle("active",button.dataset.view===selected));
   mobileViews.forEach(name=>$(`${name}View`).classList.toggle("hidden",name!==selected));
   if(persist){try{localStorage.setItem("btc-options-mobile-view",selected);}catch(_){}}
-  if(selected==="guide")window.OptionsGuide?.activate();
 }
 document.querySelectorAll(".tab").forEach(button=>button.addEventListener("click",()=>activateView(button.dataset.view,true)));
 activateView(initialView());

@@ -56,7 +56,7 @@ async function harness(path, rememberedView=null, storageBlocked=false, remember
   });
   Object.assign(element("expiryTrigger"),{getBoundingClientRect(){return{top:200,bottom:244,height:44}}});
   Object.assign(element("expiryPicker"),{getBoundingClientRect(){return{top:180,bottom:244,height:64}}});
-  const tabButtons=["chain","price","ranking","guide"].map(view=>({dataset:{view},listeners:{},classList:{toggle(){}},addEventListener(type,handler){this.listeners[type]=handler;}}));
+  const tabButtons=["chain","price","ranking"].map(view=>({dataset:{view},listeners:{},classList:{toggle(){}},addEventListener(type,handler){this.listeners[type]=handler;}}));
   const document = {
     body, documentElement:{dataset:{}}, activeElement:null, visibilityState:"visible",
     getElementById:element, querySelectorAll(selector){return selector===".tab"?tabButtons:[]}, querySelector(){return{content:""}}, addEventListener(type,handler){documentListeners[type]=handler;},
@@ -79,10 +79,10 @@ async function harness(path, rememberedView=null, storageBlocked=false, remember
   vm.runInContext(source,context);
   const api = context.__ui;
   if(isMobile){
-    const expected=!storageBlocked&&["chain","price","ranking","guide"].includes(rememberedView)?rememberedView:"chain";
-    for(const view of ["chain","price","ranking","guide"])assert.strictEqual(element(`${view}View`).classList.contains("hidden"),view!==expected,"initial saved module must restore");
-    assert.strictEqual(guideActivations,expected==="guide"?1:0,"restored guide must activate its loader");
-    for(const view of ["price","ranking","guide","chain"]){tabButtons.find(b=>b.dataset.view===view).listeners.click();assert(!element(`${view}View`).classList.contains("hidden"));if(!storageBlocked)assert.strictEqual(stored.get("btc-options-mobile-view"),view);}
+    const expected=!storageBlocked&&["chain","price","ranking"].includes(rememberedView)?rememberedView:"chain";
+    for(const view of ["chain","price","ranking"])assert.strictEqual(element(`${view}View`).classList.contains("hidden"),view!==expected,"initial saved module must restore");
+    assert.strictEqual(guideActivations,0,"removed guide must not activate its loader");
+    for(const view of ["price","ranking","chain"]){tabButtons.find(b=>b.dataset.view===view).listeners.click();assert(!element(`${view}View`).classList.contains("hidden"));if(!storageBlocked)assert.strictEqual(stored.get("btc-options-mobile-view"),view);}
   }
   const snapshot = generation => ({
     fetched_at:`2026-09-25T00:0${generation}:00Z`, catalog_fetched_at:"2026-09-25T00:00:00Z",
@@ -110,7 +110,7 @@ async function harness(path, rememberedView=null, storageBlocked=false, remember
   let before;
   api.state.snapshot=snapshot(0); api.state.receivedPerf=now; api.render();
   if(isMobile){
-    for(const view of ["price","ranking","guide"]){
+    for(const view of ["price","ranking"]){
       tabButtons.find(b=>b.dataset.view===view).listeners.click();
       api.state.snapshot=snapshot(1);api.state.contractsCache=null;api.render();api.renderLightweight();
       assert(!element(`${view}View`).classList.contains("hidden"),"market update must not reset the module");
@@ -417,9 +417,9 @@ assert(desktop.includes('<th aria-sort="descending"><button type="button" class=
 assert(!desktopJs.includes("（中国）")&&!mobileJs.includes("（中国）"));
 assert(!desktopJs.includes("天＋")&&!mobileJs.includes("天＋"));
 assert(!desktop.includes("按行权价比较各到期日")&&!mobile.includes("同一行权价按到期日"));
-for(const html of [desktop,mobile]){assert(html.includes('data-view="guide"')&&html.includes('id="guideView"')&&html.includes('/guide.js')&&html.includes('/guide.css'));assert(!html.includes('class="calculation-notes"')&&!html.includes('<summary>单期收益率</summary>'));}
-for(const html of [desktop,mobile]){assert(html.includes('data-guide-mode="readonly"')&&!html.includes('id="guideEdit"')&&!html.includes('id="guideSave"')&&!html.includes('id="guideCancel"')&&!html.includes('id="guideRefresh"'));}
-assert(desktopJs.includes('["chain","price","ranking","guide"]')&&mobileJs.includes('["chain","price","ranking","guide"]'));
+for(const html of [desktop,mobile]){assert(!html.includes('data-view="guide"')&&!html.includes('id="guideView"')&&!html.includes('/guide.js')&&!html.includes('/guide.css'));assert(!html.includes('class="calculation-notes"')&&!html.includes('<summary>单期收益率</summary>'));}
+for(const html of [desktop,mobile]){assert(!html.includes('data-guide-mode="readonly"')&&!html.includes('id="guideEdit"')&&!html.includes('id="guideSave"')&&!html.includes('id="guideCancel"')&&!html.includes('id="guideRefresh"'));}
+assert(desktopJs.includes('["chain","price","ranking"]')&&mobileJs.includes('["chain","price","ranking"]'));
 assert(guideJs.includes('fetch(apiPath("/api/options-guide"), {...options, signal:controller.signal})')&&guideJs.includes('const apiPath=path=>'));
 assert(guideJs.includes('nodes.meta.textContent = `更新于 ${updatedText(guide.updated_at)}`')&&!guideJs.includes('版本 ${guide.revision}'));
 assert(guideJs.includes('return `${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`'));
