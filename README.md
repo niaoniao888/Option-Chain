@@ -13,6 +13,7 @@
 | 读者 / 目的 | 文件 |
 | --- | --- |
 | 使用者：打开看板、交给朋友 | 本 README、[GitHub 与压缩包交接](docs/GITHUB.md) |
+| Linux 运维：Docker 首次安装、备份、升级 | [Linux Docker 交接](docs/LINUX-START-HERE.md)、[运行维护](docs/OPERATIONS.md) |
 | 接手工程师：理解设计及迁移范围 | [架构](docs/ARCHITECTURE.md)、[技术选型](docs/STACK.md)、[迁移映射](docs/MIGRATION.md) |
 | 前端工程师：接入现有网站 | [统一界面规范：BTC 默认基准](docs/UI-STANDARDS.md)、[接口契约](docs/API.md)、[集成与部署](docs/OPERATIONS.md) |
 | 金融功能维护：计算含义 | [计算口径](docs/CALCULATIONS.md) |
@@ -42,6 +43,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start.ps1 --open
 ```
 
 ## Linux / 团队开发
+
+生产式 Docker 交接请从 [Linux Docker 交接](docs/LINUX-START-HERE.md) 开始。下面命令仅用于源码开发环境。
 
 以下命令在项目根目录的 **Linux shell** 中执行。源码、`web/`、`content/` 必须一起保留；当前交付形式是源码项目，不是单独上传一个 Python wheel。
 
@@ -93,7 +96,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\test.ps1
 .\.venv\Scripts\python.exe scripts\package_release.py
 ```
 
-`verify_live.py` 需要服务已经启动，观察三个成功行情代次；只请求本机服务，不会自行调用 Binance。打包脚本生成可分享 ZIP、文件哈希清单和 ZIP 的 SHA-256，排除虚拟环境、日志、缓存、真实部署配置。
+`verify_live.py` 需要服务已经启动，观察三个成功行情代次；只请求本机服务，不会自行调用 Binance。打包脚本从 `pyproject.toml` 读取版本和当前 Git commit，生成带版本与 commit 的 ZIP、Linux tar.gz、逐文件清单和 SHA-256 清单；Linux shell 在 tar 中保持 LF 和可执行位。源码白名单排除虚拟环境、日志、缓存、真实 `.env`、运行数据和历史压缩包。
 
 上面的无参数验证命令对应本机默认根路径。**若按 Compose 默认部署在 `/options`，验证时必须包含前缀**：
 

@@ -26,6 +26,9 @@ node tests/test_ui.js
 node tests/test_bootstrap.js
 npm run format:check
 npm run test:e2e
+& .\.venv\Scripts\python.exe scripts\package_release.py
 ```
 
 说明 JSON 和管理存储继续由后端测试覆盖；主看板已取消说明 UI 和旧 `web/shared` 渲染资源。
+
+Linux 容器运行验收在 Ubuntu 24.04 x86_64 CI 中从刚生成并解压的 tar.gz 执行 `scripts/ci_container_runtime.sh`。它覆盖根路径/子路径、四个页面、静态资源与 API、只读根文件系统、UID 10001、卷持久化、优雅停止、备份恢复、单实例和空凭据。发布 job 只在 Python、Node、浏览器和容器任务全部通过后接受 `linux-<version>-<shortsha>` 标签，并上传同一个已测试的包。

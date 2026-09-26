@@ -12,4 +12,5 @@ COPY content ./content
 RUN mkdir -p runtime && chown panel:panel runtime
 USER panel
 EXPOSE 8780
+STOPSIGNAL SIGTERM
 CMD ["python", "-m", "options_panel"]

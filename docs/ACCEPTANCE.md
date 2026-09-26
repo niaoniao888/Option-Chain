@@ -74,6 +74,12 @@ Windows loopback，对快照 API 发起 100 次请求，并发 8：无错误；G
 
 复测入口、故障处理和上线前后检查见 [运行维护](OPERATIONS.md)。打包清单与压缩包校验文件由 `scripts/package_release.py` 生成，发布前按新版本重新运行，不能复用旧结果冒充本次验证。
 
+## 2026-09-26 Linux Docker 交接候选状态
+
+本轮在 Windows 使用外层项目虚拟环境完成 `compileall` 和 194 项 Python 测试，结果为 193 通过、1 项仅适用于 POSIX 大小写路径的测试按平台跳过；两个 Node 行为测试通过。新增归档测试覆盖完整恢复、路径穿越、软/硬链接、重复成员、无效 JSON、空包、仅含任一主文件、压缩流上限，并核对失败时两个原文件字节不变。
+
+本机仍没有 Docker，Ubuntu 24.04 x86_64 容器测试、从正式 tar 包构建、根路径/子路径、非 root、只读根文件系统、命名卷重建、优雅退出、跨容器单例锁及 GitHub Release job 均已写入 CI，但尚未实际执行。`npm run format:check` 在当前基线的 17 个既有前端文件上报告 Prettier 差异；本轮没有修改这些前端文件，不能把该检查记为通过。正式发布必须等待提交后的全部 GitHub Actions 通过。
+
 ## 2026-09-26 统一平台验收
 
 前台已经 implementer 实施、compact_review 独立审查、主 Agent 回归验收，形成提交 `b782be1`；后台公共设施同样完成独立审查和主 Agent 全量回归，提交 `96a5253`。四个 BTC/美股 PC/手机 URL 由同一个 `web/app/index.html` 和 ESM 组件树提供；美股管理页继续独立。

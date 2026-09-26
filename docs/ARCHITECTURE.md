@@ -34,3 +34,7 @@ BTC `DashboardState` 在首个代次前绑定 provider/source；已有数据不�
 新增市场需后端注册 descriptor/runtime/provider/static page，并在前端注册 adapter；通用 Dashboard 和 polling 不增加市场分支。管理页独立保留，说明 JSON API/存储仍兼容，但主看板不再加载旧说明或 `web/shared` 页面资产。
 
 当前是单进程内存快照架构。多 worker、多实例和跨机采集锁尚未实现；扩大部署前需分离唯一采集器与共享存储。
+
+## Linux 运维边界
+
+Compose 保持一个服务、一个 worker，容器根文件系统只读，只有 `/app/runtime` 命名卷可写。`scripts/options-panel.sh` 是 Linux 生命周期入口；`options_panel.manage` 只通过现有 WatchlistStore/GuideStore 离线读写个人文档，不装配 Runtime、采集器或 HTTP 路由。`options_panel.runtime_archive` 只归档四个允许的个人数据文件，恢复在停止状态执行并先完成完整校验。

@@ -1,6 +1,8 @@
 name: options-panel-tests
 on:
   push:
+    branches: ["**"]
+    tags: ["linux-*"]
   pull_request:
 permissions:
   contents: read
@@ -28,10 +30,25 @@ jobs:
       - run: node tests/test_ui.js
       - run: node tests/test_bootstrap.js
   container-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    env:
+      PYTHONPATH: src
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t options-panel:test .
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python scripts/package_release.py
+      - run: |
+          mkdir extracted
+          tar -xzf dist/*-linux.tar.gz -C extracted
+          cd extracted/options-panel
+          ./scripts/ci_container_runtime.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release-bundle
+          path: dist/
+          if-no-files-found: error
 
   browser-tests:
     runs-on: ubuntu-latest
@@ -57,3 +74,26 @@ jobs:
           name: playwright-report
           path: playwright-report/
           if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/linux-')
+    needs: [tests, container-build, browser-tests]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-release-bundle
+          path: dist
+      - name: Verify tag and publish tested assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          short_sha=$(git rev-parse --short=8 HEAD)
+          version=$(python -c 'import json,glob; print(json.load(open(glob.glob("dist/*-FILE-MANIFEST.json")[0], encoding="utf-8"))["version"])')
+          expected_tag="linux-$version-$short_sha"
+          [ "$GITHUB_REF_NAME" = "$expected_tag" ] || { echo "tag must equal $expected_tag" >&2; exit 1; }
+          grep -q '"git_commit": "'"$short_sha"'"' dist/*-FILE-MANIFEST.json
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes

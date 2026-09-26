@@ -9,6 +9,17 @@ from unittest import mock
 from options_panel.us_equities.credential_store import CredentialError, load_credentials, save_credentials
 
 
+class EnvironmentCredentialTests(unittest.TestCase):
+    def test_both_blank_values_mean_not_configured(self):
+        with mock.patch.dict(os.environ, {"ALPACA_API_KEY": "", "ALPACA_API_SECRET": ""}, clear=False):
+            self.assertIsNone(load_credentials())
+
+    def test_only_one_blank_value_is_rejected(self):
+        with mock.patch.dict(os.environ, {"ALPACA_API_KEY": "value", "ALPACA_API_SECRET": ""}, clear=False):
+            with self.assertRaises(CredentialError):
+                load_credentials()
+
+
 @unittest.skipUnless(os.name == "nt", "Windows DPAPI")
 class CredentialStorageTests(unittest.TestCase):
     def env_without_credentials(self):
@@ -18,8 +29,7 @@ class CredentialStorageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, mock.patch.dict(
             os.environ, {"ALPACA_API_KEY": "", "ALPACA_API_SECRET": ""}, clear=False
         ):
-            # Empty explicit environment values are intentionally invalid, so remove
-            # both keys to exercise only a temporary DPAPI file.
+            # Remove both keys to exercise only a temporary DPAPI file.
             os.environ.pop("ALPACA_API_KEY")
             os.environ.pop("ALPACA_API_SECRET")
             path = Path(directory) / "sample.dpapi"

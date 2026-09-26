@@ -41,19 +41,22 @@ Python 从操作系统环境变量读取配置，不会自动读取 `.env`。`.e
 
 ## 容器部署示例（目标服务器由接手团队执行）
 
+首次交接优先按 [Linux Docker 交接](LINUX-START-HERE.md) 使用统一控制脚本。
+
 在项目根目录的 Linux shell：
 
 ```sh
 cp .env.example .env
 # 编辑 .env：把 OPTIONS_ALLOWED_HOSTS 中的示例域名换成真实网站域名。
-docker compose config
-docker compose up -d --build
+docker compose config --quiet
+./scripts/options-panel.sh check
+./scripts/options-panel.sh start
 curl -f http://127.0.0.1:8780/options/healthz
 curl -f http://127.0.0.1:8780/options/readyz
 docker compose logs --tail 100
 ```
 
-将 `deploy/nginx-location.conf` 合并进现有 HTTPS server 块，团队检查 Nginx 配置后重载。证书、实际域名、反代限流和网站身份系统由现有网站负责。这份示例不会自动配置它们。
+子路径部署将 `deploy/nginx-location.conf` 合并进现有 HTTPS server 块；根路径部署把 `OPTIONS_BASE_PATH` 明确留空并使用 `deploy/nginx-root.conf`。团队检查 Nginx 配置后重载。证书、实际域名、反代限流和网站身份系统由现有网站负责。
 
 在具备本项目 Python 环境的验证机器上，运行 `python scripts/verify_live.py --url http://127.0.0.1:8780/options`；若验证部署到远端的网址，替换整段 URL，但保留实际子路径。不能用脚本默认根路径去检查 Compose 默认的 `/options` 服务。
 
@@ -101,6 +104,8 @@ $env:OPTIONS_ALLOWED_HOSTS = '127.0.0.1,localhost,192.168.2.2'
 4. 检查 healthz、readyz、PC/手机、错误日志。失败则退回上一版源码/镜像；不要删除运行数据卷。
 
 缓存重启后重新获取；说明文件需随版本保留。扩展多个服务器时，先设计外置共享快照及单独采集职责，当前文件锁不解决跨机器协调。
+
+Release 文件名同时包含 `pyproject.toml` 版本和 8 位 Git commit。只使用 CI 已测试的 tar.gz，并核对发布的 SHA-256 与文件清单。升级前停止和备份个人数据，记录当前镜像 ID；回滚复用上一版固定 tar/镜像，不删除命名卷。基础镜像首次构建后记录不可变 digest；更新基础镜像标签或 digest 属于供应链升级，必须重新跑容器验收。
 
 ## 美股部署补充
 

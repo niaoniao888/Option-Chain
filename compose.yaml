@@ -1,17 +1,25 @@
+name: options-panel
+
 services:
   options-panel:
     build: .
-    image: options-panel:2.1.0
+    image: "${OPTIONS_IMAGE:-options-panel:2.1.0}"
     restart: unless-stopped
     init: true
     ports:
       - "127.0.0.1:${OPTIONS_PORT:-8780}:8780"
     environment:
-      OPTIONS_BASE_PATH: "${OPTIONS_BASE_PATH:-/options}"
+      OPTIONS_HOST: "0.0.0.0"
+      OPTIONS_PORT: "8780"
+      OPTIONS_BASE_PATH: "${OPTIONS_BASE_PATH-/options}"
       OPTIONS_ALLOWED_HOSTS: "${OPTIONS_ALLOWED_HOSTS:-127.0.0.1,localhost}"
-      # Bare values inherit configured host/Compose environment; unset keys are omitted.
-      ALPACA_API_KEY:
-      ALPACA_API_SECRET:
+      OPTIONS_COLLECTOR_ENABLED: "${OPTIONS_COLLECTOR_ENABLED:-true}"
+      OPTIONS_BITCOIN_COLLECTOR_ENABLED: "${OPTIONS_BITCOIN_COLLECTOR_ENABLED:-true}"
+      OPTIONS_US_COLLECTOR_ENABLED: "${OPTIONS_US_COLLECTOR_ENABLED:-true}"
+      OPTIONS_BITCOIN_PROVIDER: "${OPTIONS_BITCOIN_PROVIDER:-binance}"
+      OPTIONS_US_EQUITIES_PROVIDER: "${OPTIONS_US_EQUITIES_PROVIDER:-alpaca}"
+      ALPACA_API_KEY: "${ALPACA_API_KEY:-}"
+      ALPACA_API_SECRET: "${ALPACA_API_SECRET:-}"
     volumes:
       - panel-runtime:/app/runtime
     read_only: true
@@ -22,8 +30,9 @@ services:
     security_opt:
       - no-new-privileges:true
     stop_grace_period: 300s
+    stop_signal: SIGTERM
     healthcheck:
-      test: ["CMD", "python", "-c", "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:8780'+os.environ.get('OPTIONS_BASE_PATH','')+'/healthz',timeout=5).read()"]
+      test: ["CMD", "python", "-c", "import os,urllib.request; from options_panel.config import normalize_base_path; p=normalize_base_path(os.environ.get('OPTIONS_BASE_PATH','')); urllib.request.urlopen('http://127.0.0.1:8780'+p+'/healthz',timeout=5).read()"]
       interval: 30s
       timeout: 6s
       start_period: 15s

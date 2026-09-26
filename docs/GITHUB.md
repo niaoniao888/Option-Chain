@@ -22,9 +22,10 @@ git switch -c feature/your-change
 .\.venv\Scripts\python.exe scripts\package_release.py
 ```
 
-把 `dist/` 中的 ZIP 和对应 `.sha256` 文件交给朋友。对方解压后先读 README，再按部署说明接入网站。ZIP 包含源码、前端、内容、测试、文档、部署配置和 CI；不含你的虚拟环境、行情日志、缓存、真实 `.env`、Git 历史或个人快捷方式。
+把 `dist/` 中带版本与 Git commit 的 ZIP 或 `-linux.tar.gz`、`-FILE-MANIFEST.json` 和 `-SHA256SUMS.txt` 一起交给朋友。Linux 接手者从 [Linux Docker 交接](LINUX-START-HERE.md) 开始。压缩包包含源码、前端、内容、测试、文档、部署配置和 CI；不含虚拟环境、行情日志、缓存、真实 `.env`、运行数据、Git 历史或历史压缩包。
 
-`FILE-MANIFEST.json` 记录包内每个源文件的 SHA-256。ZIP 同名 SHA-256 文件用于核对传输是否改变。打包不执行上传，不会自动创建 GitHub 仓库。
+包内及独立的 `FILE-MANIFEST.json` 记录版本、commit 和每个源文件的 SHA-256。`SHA256SUMS.txt` 校验 ZIP、tar.gz 与独立清单。打包不执行上传；只有以 `linux-` 开头且以当前 8 位 commit 结尾的标签，才会在全部 CI 门禁通过后把同一组已测试资产发布为 GitHub Release。
+打包器只读取 Git 已跟踪的白名单文件，并在白名单内存在未提交或未跟踪内容时拒绝生成正式包，避免版本名与实际内容不一致。
 
 ## 自己在 GitHub 创建仓库
 

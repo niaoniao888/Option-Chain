@@ -98,6 +98,8 @@ def save_credentials(api_key: str, secret: str, validation: dict, *, path: Path 
 def load_credentials(*, path: Path | None = None) -> tuple[str, str] | None:
     env_key = os.environ.get("ALPACA_API_KEY")
     env_secret = os.environ.get("ALPACA_API_SECRET")
+    if env_key == "" and env_secret == "":
+        return None
     if env_key is not None or env_secret is not None:
         if env_key is None or env_secret is None:
             raise CredentialError("ALPACA_API_KEY 与 ALPACA_API_SECRET 必须同时配置。")

@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 /runtime/
+/backups/
+/guide-edit.json
+/guide-edit.json.bak
 /node_modules/
 /playwright-report/
 /test-results/
