@@ -19,3 +19,12 @@
 ## 限制
 
 使用浏览器响应式尺寸验证，未使用实体 iPhone 或华为手机。本轮没有改变金融计算，不将界面验收等同于新增行情口径核验。最终审查、GitHub 提交和局域网同步结果以本次交付记录为准。
+
+## 2026-09-26 整体宽度和状态补充验收
+
+- 变更范围：三入口 HTML、共用 market-shell.css、US renderStatus 与集成测试；未修改计算、数据源、缓存或后台接口。
+- 主 Agent 全量 Python 回归：160 项通过；test_ui.js、test_guide.js、test_bootstrap.js 三组通过；语法与 diff 空白检查通过。
+- 浏览器：1920px 下两市场主内容宽度均 1905px（预留滚动条），padding 均 24px 38.4px；390px 手机版均宽 390px、padding 8px 10px 18px。
+- US 320px 手机版页面 scrollWidth=320，无整页水平溢出，市场状态可见为休市。另检查 1280px 桌面与深浅主题。
+- 四个已移除状态节点不在 DOM；BTC 两端无说明入口。VM 测试涵盖 OPEN/CLOSED/unknown，避免把未知误标为休市。
+- 本次为浏览器尺寸模拟，未在实体手机测试；未以此声明盘中真实行情测试。

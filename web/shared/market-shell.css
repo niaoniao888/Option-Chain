@@ -30,6 +30,7 @@ button{font-family:inherit}table{font-variant-numeric:tabular-nums}
 .us-market .current-strike{margin:0;color:var(--muted);font-size:17px;white-space:nowrap}.us-market .current-strike b{color:var(--ink)}.us-market .current-strike.below-spot b{color:var(--call)}.us-market .current-strike.above-spot b{color:var(--put)}
 @media(min-width:701px){
   .hero,.topbar{padding-block:var(--market-header-padding-block)!important}
+  .hero~main,.us-market main{max-width:2400px;margin:0 auto;padding:24px clamp(20px,2vw,40px)}
   .us-market .topbar{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
   .us-market .header-status{display:flex;flex:1;justify-content:flex-start;gap:14px;margin:0}
   .us-market .header-status>div{display:grid;grid-template-columns:auto auto;align-items:center;gap:0 6px;padding:0 10px;max-width:250px}
@@ -53,4 +54,9 @@ button{font-family:inherit}table{font-variant-numeric:tabular-nums}
   .us-market .price-heading{flex:none}
   .us-market .price-panel-head{gap:8px;flex-wrap:nowrap}
   .us-market .price-controls{width:auto;min-width:0;flex:none}
+  .us-market main{width:100%;max-width:820px;margin:0 auto;padding:8px max(10px,env(safe-area-inset-right)) 18px max(10px,env(safe-area-inset-left))}
+  .us-market .panel{padding:10px}
+  .us-market .mobile-status{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 8px}
+  .us-market .mobile-status>div:first-child{display:block}
+  .us-market .mobile-status>div:nth-child(n){grid-column:auto}
 }

@@ -95,9 +95,36 @@ require("./web/us-equities/guide.js");
             self.assertIn('aria-label="浅色"', source)
             self.assertIn('aria-label="深色"', source)
             self.assertEqual(source.count('<svg '), 2)
-            self.assertIn('market-shell.css?v=20260926-ui2', source)
+            self.assertIn('market-shell.css?v=20260926-ui3', source)
             self.assertIn('>BTC期权</a>', source)
             self.assertIn('>美股期权</a>', source)
+
+    def test_compact_market_status_has_only_three_public_states(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        css = (ROOT / "web" / "shared" / "market-shell.css").read_text(encoding="utf-8")
+        app = (WEB / "app.js").read_text(encoding="utf-8")
+        for removed in ("modeLabel", "mobileSource", "validationDetail", "mobileValidationDetail"):
+            self.assertNotIn(f'id="{removed}"', html)
+            self.assertNotIn(f'$("{removed}")', app)
+        self.assertNotIn("IEX / Indicative", html)
+        self.assertNotIn("标准可计算", app)
+        self.assertIn('.hero~main,.us-market main{max-width:2400px', css)
+        self.assertIn('.us-market .mobile-status{grid-template-columns:repeat(2,minmax(0,1fr))', css)
+
+        result = self.run_node(r'''
+const vm=require("vm"),fs=require("fs");
+const ids=["marketStatus","refreshCountdown","fetchHealth","validationStatus","quoteTime","underlyingPrice","mobileSymbol","mobilePrice","mobileMarket","mobileQuoteTime","mobileRefresh","mobileValidation","mobilePending","rankingView","rankingCount","notice"];
+const nodes=new Map(ids.map(id=>[id,{textContent:"",dataset:{},classList:{toggle(){}}}]));
+const ctx={module:{exports:{}},console,document:{getElementById(id){if(!nodes.has(id))throw new Error(`unexpected node access: ${id}`);return nodes.get(id)}}};
+vm.createContext(ctx);vm.runInContext(fs.readFileSync("./web/us-equities/app.js","utf8"),ctx);
+function render(status,mode){vm.runInContext(`state.symbol="AAPL";state.snapshot={market_status:${JSON.stringify(status)},mode:${JSON.stringify(mode)},state:"ready",fetch_health:"healthy",schedule_state:"waiting",next_refresh_seconds:5,contracts:[]};renderStatus()`,ctx);return{desktop:nodes.get("marketStatus").textContent,mobile:nodes.get("mobileMarket").textContent}}
+process.stdout.write(JSON.stringify({open:render("OPEN","live"),closed:render("CLOSED","close_reference"),unknown:render("UNVERIFIED","unavailable")}));
+''')
+        self.assertEqual(result, {
+            "open": {"desktop": "盘中", "mobile": "盘中"},
+            "closed": {"desktop": "休市", "mobile": "休市"},
+            "unknown": {"desktop": "未确认", "mobile": "未确认"},
+        })
 
     def test_admin_boots_with_watchlist_document_without_shadowing_dom(self):
         result = self.run_node(r'''
