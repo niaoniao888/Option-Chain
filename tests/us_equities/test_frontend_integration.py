@@ -107,7 +107,7 @@ process.stdout.write(JSON.stringify({sides:sides.map(x=>x.active),terms:terms.ma
             self.assertIn('aria-label="浅色"', source)
             self.assertIn('aria-label="深色"', source)
             self.assertEqual(source.count('<svg '), 2)
-            self.assertIn('market-shell.css?v=20260926-ui8', source)
+            self.assertIn('market-shell.css?v=20260926-ui9', source)
             self.assertIn('>BTC期权</a>', source)
             self.assertIn('>美股期权</a>', source)
 
