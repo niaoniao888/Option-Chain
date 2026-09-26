@@ -572,20 +572,19 @@ const root = path.resolve(__dirname, ".."),
   assert.equal(controller.pendingTimers, 0);
   controller.stop();
   const documentRef = { hidden: false };
-  let visibleRequests = 0;
+  let visibleRequests = 0,
+    visibilityFailures = 0;
   const visibility = new polling.PollingController({
     request: (signal) => {
       visibleRequests++;
       return new Promise((resolve, reject) =>
-        signal.addEventListener(
-          "abort",
-          () =>
-            reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
-          { once: true },
-        ),
+        signal.addEventListener("abort", () => reject(signal.reason), {
+          once: true,
+        }),
       );
     },
     commit: () => {},
+    fail: () => visibilityFailures++,
     interval: 100,
     timeout: 100,
     documentRef,
@@ -598,24 +597,84 @@ const root = path.resolve(__dirname, ".."),
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(visibleRequests, 2);
   visibility.stop();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(visibilityFailures, 0);
   await assert.rejects(
     polling.withTimeout(
       (signal) =>
         new Promise((resolve, reject) =>
-          signal.addEventListener(
-            "abort",
-            () =>
-              reject(
-                Object.assign(new Error("aborted"), { name: "AbortError" }),
-              ),
-            { once: true },
-          ),
+          signal.addEventListener("abort", () => reject(signal.reason), {
+            once: true,
+          }),
         ),
       1,
     ),
     /请求超时/,
   );
+  assert.equal(polling.errorMessage("network offline"), "network offline");
+  assert.equal(polling.errorMessage(null), "未知错误");
+  assert.equal(polling.errorMessage({}), "未知错误");
+  assert.equal(
+    polling.errorMessage({
+      get message() {
+        throw new Error("unsafe getter");
+      },
+    }),
+    "未知错误",
+  );
+  const timeoutTimers = new Map();
+  let timeoutTimerId = 0,
+    timeoutFailure;
+  const timeoutController = new polling.PollingController({
+    request: (signal) =>
+      new Promise((resolve, reject) =>
+        signal.addEventListener("abort", () => reject(signal.reason), {
+          once: true,
+        }),
+      ),
+    commit: () => {},
+    fail: (error) => {
+      timeoutFailure = error;
+    },
+    timeout: 50,
+    documentRef: { hidden: false },
+    timers: {
+      setTimeout(fn) {
+        const id = ++timeoutTimerId;
+        timeoutTimers.set(id, fn);
+        return id;
+      },
+      clearTimeout(id) {
+        timeoutTimers.delete(id);
+      },
+    },
+  });
+  timeoutController.start();
+  timeoutTimers.get(1)();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(timeoutFailure?.message, "请求超时");
+  timeoutController.stop();
   const originalFetch = global.fetch;
+  const bodyController = new AbortController();
+  global.fetch = async (url, options) => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => null },
+    json: () =>
+      new Promise((resolve, reject) =>
+        options.signal.addEventListener(
+          "abort",
+          () => reject(options.signal.reason),
+          { once: true },
+        ),
+      ),
+  });
+  const bodyRequest = polling.fetchJson("/body-abort", {
+    signal: bodyController.signal,
+  });
+  await Promise.resolve();
+  bodyController.abort("timeout");
+  await assert.rejects(bodyRequest, /请求超时/);
   let releasedUrl = "";
   global.fetch = async (url) => {
     releasedUrl = String(url);

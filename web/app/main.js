@@ -1,6 +1,7 @@
 import { Dashboard } from "./components/dashboard.js";
 import { bindMenu } from "./components/menu.js";
 import {
+  errorMessage,
   fetchJson,
   PollingController,
   retryDelay,
@@ -308,7 +309,7 @@ function startPolling() {
         } catch (error) {
           if (!adapter.symbol) throw error;
           adapter.setMetadataError?.(
-            `自选与状态读取失败，保留现有资料：${error.message}`,
+            `自选与状态读取失败，保留现有资料：${errorMessage(error)}`,
           );
         }
       }
@@ -325,13 +326,13 @@ function startPolling() {
       dashboard.setSnapshot(currentModel.projected);
     },
     fail: (error) => {
-      adapter.setLocalError?.(`读取失败，保留显示：${error.message}`);
+      const message = errorMessage(error);
+      adapter.setLocalError?.(`读取失败，保留显示：${message}`);
       const projected = adapter.project(now());
       if (projected) dashboard.setSnapshot(projected);
       else {
         root.querySelector("#notice").hidden = false;
-        root.querySelector("#notice").textContent =
-          `读取失败：${error.message}`;
+        root.querySelector("#notice").textContent = `读取失败：${message}`;
       }
       return retryDelay(error);
     },
@@ -343,9 +344,10 @@ function startPolling() {
 
 function boot() {
   bootstrap().catch((error) => {
+    const message = errorMessage(error);
     root.querySelector("#notice").hidden = false;
     root.querySelector("#notice").textContent =
-      `初始化失败：${error.message}；5秒后重试`;
+      `初始化失败：${message}；5秒后重试`;
     if (bootTimer === null)
       bootTimer = setTimeout(() => {
         bootTimer = null;

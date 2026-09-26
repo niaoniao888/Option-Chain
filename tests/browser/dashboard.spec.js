@@ -812,6 +812,41 @@ test("US metadata failure recovers without stopping snapshot polling", async ({
   expect(calls).toBeGreaterThanOrEqual(3);
 });
 
+test("US snapshot failure keeps the previous table and recovers", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await mockApi(page);
+  await page.unroute("**/api/v1/us-equities/snapshot?**");
+  let calls = 0;
+  await page.route("**/api/v1/us-equities/snapshot?**", (route) => {
+    calls += 1;
+    if (calls === 2) return route.abort("timedout");
+    return route.fulfill({
+      json: {
+        ...us,
+        underlying_price: calls >= 3 ? 222 : 111,
+        snapshot_version: `recovery:${calls}`,
+      },
+    });
+  });
+  await page.goto("/us-equities/desktop/");
+  await expect(page.locator("[data-quote-price]").first()).toHaveText("111.00");
+  const previousRow = await page.locator("#chainBody tr").first().innerText();
+  await expect(page.locator("#notice")).toContainText("读取失败，保留显示", {
+    timeout: 8000,
+  });
+  await expect(page.locator("#notice")).not.toContainText("undefined");
+  await expect(page.locator("#chainBody tr").first()).toHaveText(previousRow);
+  await expect(page.locator("[data-quote-price]").first()).toHaveText(
+    "222.00",
+    {
+      timeout: 8000,
+    },
+  );
+  expect(calls).toBeGreaterThanOrEqual(3);
+});
+
 test("cross-symbol abort cannot commit a late previous snapshot", async ({
   page,
 }) => {

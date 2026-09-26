@@ -58,12 +58,17 @@ export class PollingController {
         await this.commit(payload, sequence);
       }
     } catch (error) {
-      if (
-        error?.name !== "AbortError" &&
+      const aborted = controller.signal.aborted;
+      if (!aborted && !this.stopped && sequence >= this.committed) {
+        const requested = this.fail?.(error, sequence);
+        if (Number.isFinite(requested) && requested > 0) nextDelay = requested;
+      } else if (
+        aborted &&
+        controller.signal.reason === "timeout" &&
         !this.stopped &&
         sequence >= this.committed
       ) {
-        const requested = this.fail?.(error, sequence);
+        const requested = this.fail?.(new Error("请求超时"), sequence);
         if (Number.isFinite(requested) && requested > 0) nextDelay = requested;
       }
     } finally {
@@ -108,9 +113,14 @@ export async function fetchJson(
 ) {
   try {
     const response = await fetch(url, { cache: "no-store", signal });
-    const payload = await response
-      .json()
-      .catch(() => ({ error: `HTTP ${response.status}` }));
+    let payload;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      if (response.ok) throw new Error("响应数据无效");
+      payload = { error: `HTTP ${response.status}` };
+    }
     if (!response.ok) {
       const error = new Error(payload.error || `HTTP ${response.status}`);
       error.status = response.status;
@@ -119,7 +129,7 @@ export async function fetchJson(
     }
     return payload;
   } catch (error) {
-    if (error?.name === "AbortError" && signal?.reason === "timeout")
+    if (signal?.aborted && signal.reason === "timeout")
       throw new Error(timeoutLabel);
     throw error;
   }
@@ -135,12 +145,22 @@ export async function withTimeout(
   try {
     return await request(controller.signal);
   } catch (error) {
-    if (error?.name === "AbortError" && controller.signal.reason === "timeout")
+    if (controller.signal.aborted && controller.signal.reason === "timeout")
       throw new Error("请求超时");
     throw error;
   } finally {
     timers.clearTimeout(timer);
   }
+}
+
+export function errorMessage(error, fallback = "未知错误") {
+  let message = typeof error === "string" ? error : "";
+  try {
+    if (!message && typeof error?.message === "string") message = error.message;
+  } catch {
+    message = "";
+  }
+  return message.trim() || fallback;
 }
 
 export function retryDelay(error, fallback = 5000) {
