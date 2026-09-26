@@ -81,10 +81,8 @@ function renderStatus(){
   setText("fetchedAt",s.fetched_at?dataTime(s.fetched_at):"尚无成功数据");
   setText("countdown",`${Math.max(0,Math.ceil(s.next_refresh_seconds-elapsed))} 秒`);
   const age=(Number.isFinite(s.status.age_seconds)?s.status.age_seconds:Infinity)+elapsed;
-  const stale=age>=120,level=state.localError?"error":(stale&&s.status.status==="healthy"?"degraded":s.status.status);
-  const labels={healthy:"正常",degraded:stale?"数据过期":"使用缓存",error:"错误"};
-  const markOnly=Boolean(s.status.mark_warning)&&!stale&&!state.localError&&!s.status.market_error&&!s.status.catalog_error;
-  setText("health",markOnly?"概率数据异常":(labels[level]||level));const healthClass=`pill ${level}`;if($("health").className!==healthClass)$("health").className=healthClass;
+  const stale=age>=120,statusError=["degraded","error"].includes(s.status.status)||stale||Boolean(state.localError||s.status.market_error||s.status.catalog_error||s.status.mark_warning),statusHealthy=s.status.status==="healthy"&&!statusError;
+  setText("health",statusHealthy?"正常":statusError?"异常":"等待");const healthClass=`pill${statusHealthy?" healthy":statusError?" error":""}`;if($("health").className!==healthClass)$("health").className=healthClass;
   const errors=[state.localError,s.status.market_error,s.status.catalog_error,s.status.mark_warning].filter(Boolean);
   if(stale&&s.fetched_at)errors.unshift(`行情已 ${Math.floor(age)} 秒未成功更新`);
   if(interaction.pendingRender&&state.pendingMarketUpdate)errors.push(interaction.pointerDown?"已获取新行情，操作结束后更新表格":"已获取新行情，取消文字选择后更新表格");

@@ -18,22 +18,20 @@ assert(body.includes('&lt;new&gt;'));assert(body.includes('&lt;script&gt;'));ass
 '''
         subprocess.run(['node','-e',script],cwd=ROOT,check=True,capture_output=True)
 
-    def test_chain_formatter_custom_term_signature_and_local_boundary_timer(self):
+    def test_chain_formatter_fixed_term_signature_and_local_boundary_timer(self):
         script = r'''
 const assert=require('assert'),h=require('./web/us-equities/app.js');
-const row={contract_symbol:'C',side:'CALL',strike:100,bid:1,ask:2,period_return_pct:1.25,annualized_pct:20,exercise_probability_pct:50,calculation_status:'calculated',ranking_eligible:true,close_reference_eligible:false,remaining_seconds:3.5001*86400,expires_at_utc:'2026-09-28T12:00:08.640Z'};
+const row={contract_symbol:'C',side:'CALL',strike:100,bid:1,ask:2,period_return_pct:1.25,annualized_pct:20,exercise_probability_pct:50,calculation_status:'calculated',ranking_eligible:true,close_reference_eligible:false,remaining_seconds:3.0001*86400,expires_at_utc:'2026-09-28T12:00:08.640Z'};
 const cell=h.metricCell([row],'chain','period_return_pct',(_value,whole)=>whole===row?'ROW_OK':'ROW_MISSING');
 assert(cell.includes('ROW_OK'));assert(!cell.includes('ROW_MISSING'));
+const divider=h.spotDividerHtml(200);assert.equal((divider.match(/<td/g)||[]).length,7);assert.equal(h.shouldAppendSpotDivider(3,true,false),true);assert.equal(h.shouldAppendSpotDivider(3,true,true),false);assert.equal(h.shouldAppendSpotDivider(0,true,false),false);
 const snapshot={state:'ready',fetch_health:'healthy',mode:'live',market_status:'OPEN',server_time:'2026-09-25T00:00:00Z',fetched_age_seconds:0,contracts:[row]};
-const filter={side:'CALL',bucket:'CUSTOM',min:3.5,max:4};
+const filter={side:'CALL',bucket:'3_7'};
 const before=h.projectionSignature(snapshot,'ranking',null,null,filter);
-const afterSnapshot={...snapshot,contracts:[{...row,remaining_seconds:3.4999*86400}]};
+const afterSnapshot={...snapshot,contracts:[{...row,remaining_seconds:2.9999*86400}]};
 const after=h.projectionSignature(afterSnapshot,'ranking',null,null,filter);
 assert.notEqual(before,after);
-assert.equal(h.projectionSignature(snapshot,'ranking'),h.projectionSignature(afterSnapshot,'ranking'));
 const now=Date.parse('2026-09-25T00:00:00Z');
-const customExpiry={...snapshot,contracts:[{...row,expires_at_utc:new Date(now+3.5001*86400000).toISOString()}]};
-assert.equal(h.nextLocalBoundaryMilliseconds(customExpiry,now,filter),8641);
 let timerCallback=null,timerDelay=null,networkRequests=1,localProjects=0;
 const quoteBoundary={...snapshot,contracts:[{...row,quote_valid_until_utc:new Date(now+2000).toISOString()}]};
 const timer=h.armLocalBoundary(quoteBoundary,now,null,(callback,delay)=>{timerCallback=callback;timerDelay=delay;return 7},()=>{localProjects+=1});
@@ -88,9 +86,10 @@ assert.equal(countdown.next_refresh_seconds,55);
 const h=require('./web/us-equities/app.js');
 const desc=h.sortRowsNullLast([{v:null,id:'n'},{v:2,id:'b'},{v:5,id:'a'}],'v','desc').map(x=>x.id);
 const asc=h.sortRowsNullLast([{v:null,id:'n'},{v:2,id:'b'},{v:5,id:'a'}],'v','asc').map(x=>x.id);
+const probability=h.sortRowsNullLast([{exercise_probability_pct:null,id:'n'},{exercise_probability_pct:33.1,id:'b'},{exercise_probability_pct:86.7,id:'a'}],'exercise_probability_pct','desc').map(x=>x.id);
 const priceDelta=h.nextPriceSort({key:'expiration_date',direction:'asc'},'delta');
 const priceDeltaAgain=h.nextPriceSort(priceDelta,'delta');
-process.stdout.write(JSON.stringify({desc,asc,page:h.paginateRows(Array.from({length:23},(_,i)=>i),2),
+process.stdout.write(JSON.stringify({desc,asc,probability,page:h.paginateRows(Array.from({length:23},(_,i)=>i),2),
  terms:[2.99,3,6.99,7,29.99,30,60,60.01].map(h.termBucket),groups:h.strikeGroups([4,1,3,2],2),
  close:h.rowRankingEligible({close_reference_eligible:true},'close_reference'),conflict:h.guideConflictDecision(409),
  live:h.rowRankingEligible({ranking_eligible:true},'live'),custom:h.presetForRange('1','9'),
@@ -111,6 +110,7 @@ process.stdout.write(JSON.stringify({desc,asc,page:h.paginateRows(Array.from({le
         payload = json.loads(result.stdout)
         self.assertEqual(payload["desc"], ["a", "b", "n"])
         self.assertEqual(payload["asc"], ["b", "a", "n"])
+        self.assertEqual(payload["probability"], ["a", "b", "n"])
         self.assertEqual(payload["page"]["rows"], list(range(10, 20)))
         self.assertEqual(payload["terms"], ["LT3","3_7","3_7","7_30","7_30","30_60","30_60","GT60"])
         self.assertEqual(payload["groups"], [[1,2],[3,4]])
@@ -182,7 +182,8 @@ const rows=[
  {expiration_date:'2026-10-10',remaining_seconds:15*86400},
  {expiration_date:'2026-10-17',remaining_seconds:22*86400}
 ];
-const invalid=h.normalizeStoredFilters({selectedExpiry:'bad',priceSide:'ALL',priceStrikes:{CALL:0,PUT:'2'},priceSort:{key:'secret',direction:'up'},rankingSort:{key:'bad',direction:'asc'},rankingPage:-2,daysMin:'bad',daysMax:-1});
+const invalid=h.normalizeStoredFilters({selectedExpiry:'bad',priceSide:'ALL',priceStrikes:{CALL:0,PUT:'2'},priceSort:{key:'secret',direction:'up'},rankingSort:{key:'bad',direction:'asc'},rankingPage:-2,termFilter:'CUSTOM'});
+const migrated=h.normalizeStoredFilters({termFilter:'CUSTOM',rankingSort:{key:'delta',direction:'asc'}});
 const valid=h.normalizeStoredFilters({selectedExpiry:'2026-10-10',priceSide:'PUT',priceStrikes:{CALL:148.5,PUT:150},priceSort:{key:'delta',direction:'desc'},rankingSort:{key:'strike',direction:'asc'},rankingPage:7,mobileView:'ranking'});
 const store=new Map([
  ['us-options-filters:AAPL',JSON.stringify({mobileView:'price',selectedExpiry:'2026-10-10',priceSide:'PUT'})],
@@ -200,7 +201,7 @@ const trigger={disabled:false,attrs:{},setAttribute(k,v){this.attrs[k]=v},getBou
 global.window={innerHeight:600};global.document={documentElement:{clientHeight:600},getElementById:id=>({menu,trigger,picker}[id])};
 h.togglePicker('menu','trigger','picker',()=>{});const emptyOpen=!classes.has('hidden');menu.optionAvailable=true;let otherClosed=0;h.togglePicker('menu','trigger','picker',()=>{otherClosed+=1});const filledOpen=!classes.has('hidden');
 process.stdout.write(JSON.stringify({
- defaultExpiry:h.mobileExpiryDefault(rows.map(x=>x.expiration_date),rows),emptyExpiry:h.mobileExpiryDefault([],rows),invalid,valid,
+ defaultExpiry:h.mobileExpiryDefault(rows.map(x=>x.expiration_date),rows),emptyExpiry:h.mobileExpiryDefault([],rows),invalid,valid,migrated,
  pages:[h.paginationItems(1,2),h.paginationItems(1,10),h.paginationItems(5,10),h.paginationItems(10,10)],
  rankingPages:[h.resolvedRankingPage(7,1,false,false),h.resolvedRankingPage(7,1,false,true),h.resolvedRankingPage(7,2,true,true)],switched,actualLoads,pickerState:{emptyOpen,filledOpen,disabled:trigger.disabled,otherClosed},
  blocked:[h.interactionBlocksRender(),h.interactionBlocksRender({expiryMenuOpen:true}),h.interactionBlocksRender({strikeMenuOpen:true}),h.interactionBlocksRender({pointerDown:true}),h.interactionBlocksRender({editing:true})],
@@ -212,7 +213,9 @@ process.stdout.write(JSON.stringify({
         self.assertIsNone(data["emptyExpiry"])
         self.assertEqual(data["invalid"]["priceSide"], "CALL")
         self.assertEqual(data["invalid"]["priceStrikes"], {"CALL": None, "PUT": None})
-        self.assertEqual((data["invalid"]["daysMin"], data["invalid"]["daysMax"]), ("", ""))
+        self.assertEqual(data["invalid"]["termFilter"], "LT3")
+        self.assertEqual(data["migrated"]["termFilter"], "LT3")
+        self.assertEqual(data["migrated"]["rankingSort"], {"key":"exercise_probability_pct","direction":"asc"})
         self.assertEqual(data["invalid"]["rankingPage"], 1)
         self.assertEqual(data["valid"]["selectedExpiry"], "2026-10-10")
         self.assertEqual(data["valid"]["priceStrikes"], {"CALL": 148.5, "PUT": 150})
@@ -233,7 +236,7 @@ process.stdout.write(JSON.stringify({
         app = (ROOT / "web" / "us-equities" / "app.js").read_text(encoding="utf-8")
         css = (ROOT / "web" / "us-equities" / "style.css").read_text(encoding="utf-8")
         guide = (ROOT / "web" / "us-equities" / "guide.js").read_text(encoding="utf-8")
-        for node_id in ("mobileSymbol","mobilePrice","mobileQuoteTime","mobileRefresh","mobileValidation","expiryTrigger","expiryMenu","strikeTrigger","strikeMenu"):
+        for node_id in ("mobileSymbol","mobilePrice","mobileDataTime","mobileRefresh","mobileValidation","expiryTrigger","expiryMenu","strikeTrigger","strikeMenu"):
             self.assertIn(f'id="{node_id}"', html)
         self.assertIn("width:592px", css)
         self.assertIn("width:540px", css)

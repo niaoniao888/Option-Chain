@@ -117,14 +117,13 @@ function renderStatus(s) {
   setText("fetchedAt",s.fetched_at ? dataTime(s.fetched_at) : "尚无成功数据");
   const elapsed = Math.floor(Math.max(0, performance.now() - state.receivedPerf) / 1000);
   setText("countdown",`${Math.max(0, s.next_refresh_seconds - elapsed)} 秒`);
-  const labels = {healthy:"正常",degraded:"降级 / 使用缓存",error:"错误 / 等待数据"};
   const baseAge = Number.isFinite(s.status.age_seconds) ? s.status.age_seconds : Infinity;
   const localAge = baseAge + Math.max(0, performance.now() - state.receivedPerf) / 1000;
   const localStale = localAge >= 120;
-  const localLevel = state.localError ? "error" : (localStale && s.status.status === "healthy" ? "degraded" : s.status.status);
-  const markOnly = Boolean(s.status.mark_warning) && !localStale && !state.localError && !s.status.market_error && !s.status.catalog_error;
-  setText("health",markOnly ? "概率数据异常" : (localStale && s.fetched_at && !state.localError ? "数据过期 / 使用缓存" : (labels[localLevel] || localLevel)));
-  const healthClass=`pill ${localLevel}`;if($("health").className!==healthClass)$("health").className=healthClass;
+  const statusError=["degraded","error"].includes(s.status.status)||localStale||Boolean(state.localError||s.status.market_error||s.status.catalog_error||s.status.mark_warning);
+  const statusHealthy=s.status.status==="healthy"&&!statusError;
+  setText("health",statusHealthy?"正常":statusError?"异常":"等待");
+  const healthClass=`pill${statusHealthy?" healthy":statusError?" error":""}`;if($("health").className!==healthClass)$("health").className=healthClass;
   const errors = [s.status.market_error, s.status.catalog_error, s.status.mark_warning].filter(Boolean);
   if (state.localError) errors.unshift(state.localError);
   if (localStale && s.fetched_at) errors.unshift(`行情已超过 ${Math.floor(localAge)} 秒未成功更新`);

@@ -109,6 +109,15 @@ async function harness(path, rememberedView=null, storageBlocked=false, remember
   const tableMutations = () => element("chainBody").mutations + element("priceYieldBody").mutations + element("rankingBody").mutations;
   let before;
   api.state.snapshot=snapshot(0); api.state.receivedPerf=now; api.render();
+  assert.strictEqual(element("health").textContent,"正常",`${path}: healthy snapshot must show normal`);
+  assert(element("health").className.includes("healthy"),`${path}: healthy snapshot must be green`);
+  for(const abnormal of [
+    {...snapshot(0),status:{...snapshot(0).status,status:"degraded"}},
+    {...snapshot(0),status:{...snapshot(0).status,mark_warning:"mark failed"}},
+    {...snapshot(0),status:{...snapshot(0).status,age_seconds:121}},
+  ]){api.state.snapshot=abnormal;api.state.contractsCache=null;api.render();assert.strictEqual(element("health").textContent,"异常",`${path}: degraded, mark-failed, and stale states must be abnormal`);assert(element("health").className.includes("error"),`${path}: abnormal state must be red`);}
+  api.state.snapshot={...snapshot(0),status:{...snapshot(0).status,status:"loading"}};api.state.contractsCache=null;api.render();assert.strictEqual(element("health").textContent,"等待",`${path}: unknown/loading state must remain neutral`);assert.strictEqual(element("health").className,"pill",`${path}: waiting state must not be green or red`);
+  api.state.snapshot=snapshot(0);api.state.contractsCache=null;api.render();
   if(isMobile){
     for(const view of ["price","ranking"]){
       tabButtons.find(b=>b.dataset.view===view).listeners.click();
