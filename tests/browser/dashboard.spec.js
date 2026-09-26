@@ -92,6 +92,34 @@ async function mockApi(page) {
   );
 }
 
+async function expectMobileTableFits(page, panel, tableSelector) {
+  const geometry = await page
+    .locator(`[data-panel="${panel}"] .table-wrap`)
+    .evaluate((wrap, selector) => {
+      const table = wrap.querySelector(selector);
+      const wrapBox = wrap.getBoundingClientRect();
+      const cells = [
+        ...table.querySelectorAll("thead tr:first-child th"),
+        ...table.querySelectorAll("tbody tr:first-child td"),
+      ].map((cell) => {
+        const box = cell.getBoundingClientRect();
+        return { left: box.left, right: box.right };
+      });
+      return {
+        clientWidth: wrap.clientWidth,
+        scrollWidth: wrap.scrollWidth,
+        left: wrapBox.left,
+        right: wrapBox.right,
+        cells,
+      };
+    }, tableSelector);
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
+  for (const cell of geometry.cells) {
+    expect(cell.left).toBeGreaterThanOrEqual(geometry.left - 1);
+    expect(cell.right).toBeLessThanOrEqual(geometry.right + 1);
+  }
+}
+
 for (const market of ["bitcoin", "us-equities"]) {
   for (const mode of ["desktop", "mobile"]) {
     for (const width of mode === "mobile" ? [320, 390, 430] : [1280, 1920]) {
@@ -105,6 +133,13 @@ for (const market of ["bitcoin", "us-equities"]) {
           for (const view of ["chain", "price", "ranking"]) {
             await page.locator(`[data-view="${view}"]`).click();
             await expect(page.locator(`[data-panel="${view}"]`)).toBeVisible();
+            if (mode === "mobile" && view === "price") {
+              await expect(page.locator("#priceHead th")).toHaveCount(5);
+              await expectMobileTableFits(page, "price", ".price-table");
+            }
+            if (mode === "mobile" && view === "ranking") {
+              await expectMobileTableFits(page, "ranking", ".ranking-table");
+            }
             expect(
               await page.evaluate(
                 () =>

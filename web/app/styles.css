@@ -797,6 +797,21 @@ footer a {
     min-width: 0;
     font-size: clamp(11px, 2.7vw, 12px);
   }
+  .price-table th:nth-child(1) {
+    width: 21%;
+  }
+  .price-table th:nth-child(2) {
+    width: 24%;
+  }
+  .price-table th:nth-child(3) {
+    width: 18%;
+  }
+  .price-table th:nth-child(4) {
+    width: 16%;
+  }
+  .price-table th:nth-child(5) {
+    width: 21%;
+  }
   .price-table th,
   .ranking-table th,
   .price-table td,
