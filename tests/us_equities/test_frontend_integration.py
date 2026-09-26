@@ -107,7 +107,7 @@ process.stdout.write(JSON.stringify({sides:sides.map(x=>x.active),terms:terms.ma
             self.assertIn('aria-label="浅色"', source)
             self.assertIn('aria-label="深色"', source)
             self.assertEqual(source.count('<svg '), 2)
-            self.assertIn('market-shell.css?v=20260926-ui9', source)
+            self.assertIn('market-shell.css?v=20260926-ui10', source)
             self.assertIn('>BTC期权</a>', source)
             self.assertIn('>美股期权</a>', source)
 
@@ -142,6 +142,22 @@ process.stdout.write(JSON.stringify({open:render("OPEN","live"),closed:render("C
             "closed": {"desktop": "休市", "mobile": "休市", "time":"09-26 14:07:08", "countdown":"5秒", "validation":"正常", "tone":"ok"},
             "unknown": {"desktop": "未确认", "mobile": "未确认", "time":"09-26 14:07:08", "countdown":"5秒", "validation":"正常", "tone":"ok"},
         })
+
+    def test_responsive_sort_label_and_compact_date_remain_safe(self):
+        result = self.run_node(r'''
+const h=require("./web/us-equities/app.js");
+process.stdout.write(JSON.stringify({
+  period:h.responsiveSortLabel("period_return_pct","单期收益"),
+  ordinary:h.responsiveSortLabel("annualized_pct","参考年化"),
+  date:h.dateCell("2026-09-26"),
+  escaped:h.dateCell("<script>")
+}));
+''')
+        self.assertEqual(result["period"], {"desktop": "单期收益率", "mobile": "单期收益"})
+        self.assertEqual(result["ordinary"], {"desktop": "参考年化", "mobile": "参考年化"})
+        self.assertIn('<span class="date-year">2026</span>', result["date"])
+        self.assertIn('<span class="date-rest">09-26</span>', result["date"])
+        self.assertEqual(result["escaped"], "&lt;script&gt;")
 
     def test_admin_boots_with_watchlist_document_without_shadowing_dom(self):
         result = self.run_node(r'''
