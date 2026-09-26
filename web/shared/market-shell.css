@@ -37,6 +37,12 @@ button{font-family:inherit}table{font-variant-numeric:tabular-nums}
 :root[data-theme="dark"] .us-market #expiryDetail{color:#a9c7ff!important}
 .us-market #rankingView .ranking-table th{color:#59657a}:root[data-theme="dark"] .us-market #rankingView .ranking-table th{color:#bdc8d8;background:#202d42}
 .current-strike,.us-market .current-strike{font-weight:700}.current-strike b,.us-market .current-strike b{font-weight:400!important;color:inherit}.us-market .current-strike.below-spot{color:var(--call)}.us-market .current-strike.above-spot{color:var(--put)}
+body:not(.us-market) #priceSideFilter,body:not(.us-market) #sideFilter,.us-market .price-direction .segmented,.us-market #sideButtons{display:flex;flex-wrap:nowrap;gap:4px;width:240px;max-width:100%;padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--soft);box-sizing:border-box}
+body:not(.us-market) #priceSideFilter button,body:not(.us-market) #sideFilter button,.us-market .price-direction .segmented button,.us-market #sideButtons button{flex:1 1 0;min-width:0;height:44px;min-height:44px;border:0;border-radius:7px;background:transparent;color:var(--muted);padding:7px 12px;font:inherit;font-size:18px;font-weight:800;cursor:pointer}
+body:not(.us-market) #priceSideFilter button[aria-pressed="true"],body:not(.us-market) #sideFilter button[aria-pressed="true"],.us-market .price-direction .segmented button[aria-pressed="true"],.us-market #sideButtons button[aria-pressed="true"],.us-market .price-direction .segmented button.active,.us-market #sideButtons button.active{background:var(--blue);color:#fff;box-shadow:0 2px 7px rgba(20,60,120,.18)}
+body:not(.us-market) #expiryRange,.us-market #termButtons{display:flex;flex-wrap:nowrap;gap:3px;width:max-content;max-width:100%;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--soft);box-sizing:border-box;overflow-x:auto}
+body:not(.us-market) #expiryRange button,.us-market #termButtons button{flex:0 0 auto;height:44px;min-height:44px;border:0;border-radius:7px;background:transparent;color:var(--muted);padding:4px 10px;font:inherit;font-size:16px;font-weight:400;cursor:pointer}
+body:not(.us-market) #expiryRange button[aria-pressed="true"],.us-market #termButtons button.active{background:var(--blue);color:#fff;box-shadow:0 2px 7px rgba(20,60,120,.18)}
 @media(min-width:701px){
   .hero,.topbar{padding-block:var(--market-header-padding-block)!important}
   .hero~main,.us-market main{max-width:2400px;margin:0 auto;padding:24px clamp(20px,2vw,40px)}
@@ -49,14 +55,12 @@ button{font-family:inherit}table{font-variant-numeric:tabular-nums}
   .hero h1{font-size:22px}
   .us-market #chainView #expiryDetail,.us-market .current-strike{font-size:19.5px}
   .us-market .expiry-buttons button{font-size:17px;min-height:auto;padding:5px 2px}
-  .us-market .price-direction .segmented button{height:44px;min-height:44px;padding:7px 12px;font-size:18px;font-weight:800}
+  .hero-status #countdown,.hero-status #health,.us-market #refreshCountdown,.us-market #validationStatus{font-size:16px}
   .us-market .strike-position{gap:8px}
   .us-market .strike-position>span{padding:8px 2px;font-size:16px;font-weight:800}
   .us-market #rankingView .ranking-table{font-size:17px;color:var(--ink)}
   .us-market #rankingView .ranking-table th,.us-market #rankingView .ranking-table th button{font-size:15px;font-weight:800}
   .us-market #rankingView .ranking-table td{padding:9px 10px}
-  .us-market #sideButtons button{height:44px;min-height:44px;padding:7px 12px;font-size:16px;font-weight:800}
-  .us-market #termButtons button{height:36px;min-height:36px;padding:4px 10px;font-size:16px;font-weight:400}
   .us-market .themes{flex:none}
   .us-market .chain-table{width:1200px;min-width:1200px;max-width:1200px}
   .us-market .chain-table col:nth-child(1),.us-market .chain-table col:nth-child(7){width:150px}
@@ -83,9 +87,16 @@ button{font-family:inherit}table{font-variant-numeric:tabular-nums}
   .chain tbody td.strike-cell{font-weight:400!important}
   .us-market .mobile-expiry-detail{display:block;color:var(--muted)!important;font-size:clamp(11px,2.9vw,16px);font-weight:400;line-height:1.25;white-space:pre-line}
   .us-market .desktop-expiry-detail{display:none}
-  .us-market .price-direction .segmented button{height:38px;min-height:38px;padding:3px 6px;font-size:clamp(11px,2.85vw,16px);font-weight:800}
-  .us-market #sideButtons button{min-height:38px;padding:3px 6px;font-size:clamp(11px,2.85vw,16px);font-weight:800}
-  .us-market #termButtons button{min-height:38px;padding:3px 1px;font-size:clamp(11px,2.85vw,16px);font-weight:400}
+  body:not(.us-market) #priceSideFilter,body:not(.us-market) #sideFilter,.us-market .price-direction .segmented,.us-market #sideButtons{gap:3px;width:136px;padding:2px;border-radius:9px;background:var(--card)}
+  body:not(.us-market) #priceSideFilter button,body:not(.us-market) #sideFilter button,.us-market .price-direction .segmented button,.us-market #sideButtons button{height:38px;min-height:38px;padding:3px 6px;font-size:clamp(11px,2.85vw,16px);font-weight:800}
+  body:not(.us-market) #expiryRange,.us-market #termButtons{background:var(--card)}
+  body:not(.us-market) #expiryRange button,.us-market #termButtons button{height:38px;min-height:38px;padding:3px 1px;font-size:clamp(11px,2.85vw,16px);font-weight:400}
+  .top-status #countdown,.top-status #health,.us-market #mobileRefresh,.us-market #mobileValidation{font-size:clamp(11px,2.85vw,16px)}
+  .us-market .price-scroll th:nth-child(1),.us-market .price-scroll td:nth-child(1){width:24%}
+  .us-market .price-scroll th:nth-child(2),.us-market .price-scroll td:nth-child(2){width:21%}
+  .us-market .price-scroll th:nth-child(3),.us-market .price-scroll td:nth-child(3){width:18%}
+  .us-market .price-scroll th:nth-child(4),.us-market .price-scroll td:nth-child(4){width:18%}
+  .us-market .price-scroll th:nth-child(5),.us-market .price-scroll td:nth-child(5){width:19%}
   .us-market #rankingView .ranking-table,.us-market #rankingView .ranking-table th,.us-market #rankingView .ranking-table td,.us-market #rankingView .ranking-table .quote-detail summary{font-size:clamp(10.5px,2.7vw,15px)}
   .us-market #rankingView .ranking-table th button{height:auto;min-height:0;padding:1px;font-size:inherit;font-weight:800}
 }

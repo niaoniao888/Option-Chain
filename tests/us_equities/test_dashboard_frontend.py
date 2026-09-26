@@ -87,8 +87,8 @@ const h=require('./web/us-equities/app.js');
 const desc=h.sortRowsNullLast([{v:null,id:'n'},{v:2,id:'b'},{v:5,id:'a'}],'v','desc').map(x=>x.id);
 const asc=h.sortRowsNullLast([{v:null,id:'n'},{v:2,id:'b'},{v:5,id:'a'}],'v','asc').map(x=>x.id);
 const probability=h.sortRowsNullLast([{exercise_probability_pct:null,id:'n'},{exercise_probability_pct:33.1,id:'b'},{exercise_probability_pct:86.7,id:'a'}],'exercise_probability_pct','desc').map(x=>x.id);
-const priceDelta=h.nextPriceSort({key:'expiration_date',direction:'asc'},'delta');
-const priceDeltaAgain=h.nextPriceSort(priceDelta,'delta');
+const priceProbability=h.nextPriceSort({key:'expiration_date',direction:'asc'},'exercise_probability_pct');
+const priceProbabilityAgain=h.nextPriceSort(priceProbability,'exercise_probability_pct');
 process.stdout.write(JSON.stringify({desc,asc,probability,page:h.paginateRows(Array.from({length:23},(_,i)=>i),2),
  terms:[2.99,3,6.99,7,29.99,30,60,60.01].map(h.termBucket),groups:h.strikeGroups([4,1,3,2],2),
  close:h.rowRankingEligible({close_reference_eligible:true},'close_reference'),conflict:h.guideConflictDecision(409),
@@ -99,7 +99,7 @@ process.stdout.write(JSON.stringify({desc,asc,probability,page:h.paginateRows(Ar
  month:h.addCalendarMonths('2026-08-31',6),split:h.splitExpiries(['2027-02-28','2027-03-01'],'2026-08-31'),
  chinaDates:['2026-01-16T21:00:00Z','2026-03-13T20:00:00Z','2026-11-27T18:00:00Z','bad','2026-09-25T20:00:00'].map(h.chinaExpiryDate),
  groupLabels:[h.strikeGroupLabel([100]),h.strikeGroupLabel([100,109])],
- priceSorts:[priceDelta,priceDeltaAgain,h.nextPriceSort(priceDeltaAgain,'remaining_seconds')],
+ priceSorts:[priceProbability,priceProbabilityAgain,h.nextPriceSort(priceProbabilityAgain,'remaining_seconds')],
  partition:h.partitionStrikes([102,99,100,101],100),missingSpot:h.partitionStrikes([102,99,100],null),
  rawEquality:h.partitionStrikes([100],100.0000001),selectedAcrossSpot:[100,h.partitionStrikes([99,100,101],99.5),h.partitionStrikes([99,100,101],100.5)],
  relative:[h.strikeRelativePct(90,100),h.strikeRelativePct(110,100),h.strikeRelativePct(100,100),h.strikeRelativePct(null,100),h.strikeRelativePct(100,0)],
@@ -126,7 +126,7 @@ process.stdout.write(JSON.stringify({desc,asc,probability,page:h.paginateRows(Ar
         self.assertEqual(payload["expiryDisplay"], "2026-09-26")
         self.assertEqual(payload["groupLabels"], ["100", "100–109"])
         self.assertEqual(payload["priceSorts"], [
-            {"key":"delta","direction":"desc"}, {"key":"delta","direction":"asc"},
+            {"key":"exercise_probability_pct","direction":"desc"}, {"key":"exercise_probability_pct","direction":"asc"},
             {"key":"remaining_seconds","direction":"asc"}])
         self.assertEqual(payload["partition"], {
             "spotAvailable":True,"lower":[99,100],"higher":[101,102],"atMoney":100,"all":[99,100,101,102]})
@@ -154,8 +154,18 @@ process.stdout.write(JSON.stringify({desc,asc,probability,page:h.paginateRows(Ar
         self.assertNotIn("renderUnclassified", app)
         self.assertIn("width:1050px", css)
         self.assertEqual(html.count("data-price-sort="), 5)
+        price_headers = [
+            'data-price-sort="expiration_date" data-label="到期日"',
+            'data-price-sort="annualized_pct" data-label="参考年化"',
+            'data-price-sort="period_return_pct" data-label="单期收益"',
+            'data-price-sort="exercise_probability_pct" data-label="行权概率"',
+            'data-price-sort="remaining_seconds" data-label="剩余时间"',
+        ]
+        self.assertEqual([html.index(header) for header in price_headers], sorted(html.index(header) for header in price_headers))
         price_row = app.split("function renderPrice(", 1)[1].split("</tr>", 1)[0]
         self.assertEqual(price_row.count("<td"), 5)
+        self.assertIn('class="probability-metric">${pct(r.exercise_probability_pct,1)}', price_row)
+        self.assertNotIn("fmt(r.delta", price_row)
         self.assertNotIn('data-side-filter="ALL"', html)
         self.assertIn('id="priceHead"', html)
         self.assertIn('aria-pressed="true">Call', html)
@@ -183,7 +193,7 @@ const rows=[
  {expiration_date:'2026-10-17',remaining_seconds:22*86400}
 ];
 const invalid=h.normalizeStoredFilters({selectedExpiry:'bad',priceSide:'ALL',priceStrikes:{CALL:0,PUT:'2'},priceSort:{key:'secret',direction:'up'},rankingSort:{key:'bad',direction:'asc'},rankingPage:-2,termFilter:'CUSTOM'});
-const migrated=h.normalizeStoredFilters({termFilter:'CUSTOM',rankingSort:{key:'delta',direction:'asc'}});
+const migrated=h.normalizeStoredFilters({termFilter:'CUSTOM',priceSort:{key:'delta',direction:'desc'},rankingSort:{key:'delta',direction:'asc'}});
 const valid=h.normalizeStoredFilters({selectedExpiry:'2026-10-10',priceSide:'PUT',priceStrikes:{CALL:148.5,PUT:150},priceSort:{key:'delta',direction:'desc'},rankingSort:{key:'strike',direction:'asc'},rankingPage:7,mobileView:'ranking'});
 const store=new Map([
  ['us-options-filters:AAPL',JSON.stringify({mobileView:'price',selectedExpiry:'2026-10-10',priceSide:'PUT'})],
@@ -216,9 +226,11 @@ process.stdout.write(JSON.stringify({
         self.assertEqual(data["invalid"]["termFilter"], "LT3")
         self.assertEqual(data["migrated"]["termFilter"], "LT3")
         self.assertEqual(data["migrated"]["rankingSort"], {"key":"exercise_probability_pct","direction":"asc"})
+        self.assertEqual(data["migrated"]["priceSort"], {"key":"exercise_probability_pct","direction":"desc"})
         self.assertEqual(data["invalid"]["rankingPage"], 1)
         self.assertEqual(data["valid"]["selectedExpiry"], "2026-10-10")
         self.assertEqual(data["valid"]["priceStrikes"], {"CALL": 148.5, "PUT": 150})
+        self.assertEqual(data["valid"]["priceSort"], {"key": "exercise_probability_pct", "direction": "desc"})
         self.assertEqual(data["valid"]["rankingSort"], {"key": "strike", "direction": "asc"})
         self.assertEqual(data["valid"]["mobileView"], "ranking")
         self.assertEqual([(item["mobileView"], item["selectedExpiry"], item["priceSide"]) for item in data["switched"]], [("price","2026-10-10","PUT"),("ranking","2026-10-17","CALL"),("chain",None,"CALL")])

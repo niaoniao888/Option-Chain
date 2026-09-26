@@ -76,6 +76,18 @@ require("./web/us-equities/guide.js");
 ''')
         self.assertEqual(result, {"overlappingCalls": 1, "calls": 2, "timeout": True, "recovered": True})
 
+    def test_restored_ranking_filters_show_selected_buttons(self):
+        result = self.run_node(r'''
+const vm=require("vm"),fs=require("fs"),nodes={sideFilter:{value:""},termFilter:{value:""}};
+const make=(key,value)=>{const b={dataset:{[key]:value},active:false};b.classList={toggle(_name,on){b.active=on}};return b};
+const sides=[make("sideFilter","CALL"),make("sideFilter","PUT")],terms=[make("termFilter","LT3"),make("termFilter","7_30")];
+const ctx={module:{exports:{}},console,document:{getElementById:id=>nodes[id],querySelectorAll:s=>s.includes("side-filter")?sides:terms}};
+vm.createContext(ctx);vm.runInContext(fs.readFileSync("./web/us-equities/app.js","utf8"),ctx);
+vm.runInContext(`activateView=()=>{};state.symbol="AAPL";loadFilters(()=>JSON.stringify({sideFilter:"PUT",termFilter:"7_30",mobileView:"ranking"}))`,ctx);
+process.stdout.write(JSON.stringify({sides:sides.map(x=>x.active),terms:terms.map(x=>x.active)}));
+''')
+        self.assertEqual(result, {"sides": [False, True], "terms": [False, True]})
+
     def test_shared_theme_key_and_market_tabs(self):
         for path in (ROOT / "web" / "desktop" / "app.js", ROOT / "web" / "mobile" / "mobile.js", WEB / "app.js"):
             self.assertIn("options-panel-theme", path.read_text(encoding="utf-8"))
@@ -95,7 +107,7 @@ require("./web/us-equities/guide.js");
             self.assertIn('aria-label="浅色"', source)
             self.assertIn('aria-label="深色"', source)
             self.assertEqual(source.count('<svg '), 2)
-            self.assertIn('market-shell.css?v=20260926-ui6', source)
+            self.assertIn('market-shell.css?v=20260926-ui7', source)
             self.assertIn('>BTC期权</a>', source)
             self.assertIn('>美股期权</a>', source)
 
@@ -106,6 +118,8 @@ require("./web/us-equities/guide.js");
         for removed in ("modeLabel", "mobileSource", "validationDetail", "mobileValidationDetail"):
             self.assertNotIn(f'id="{removed}"', html)
             self.assertNotIn(f'$("{removed}")', app)
+        self.assertNotIn('id="fetchHealth"', html)
+        self.assertNotIn('$("fetchHealth")', app)
         self.assertNotIn("IEX / Indicative", html)
         self.assertNotIn("标准可计算", app)
         self.assertIn('.hero~main,.us-market main{max-width:2400px', css)
@@ -116,7 +130,7 @@ require("./web/us-equities/guide.js");
 
         result = self.run_node(r'''
 const vm=require("vm"),fs=require("fs");
-const ids=["marketStatus","dataTime","refreshCountdown","fetchHealth","validationStatus","underlyingPrice","mobileSymbol","mobilePrice","mobileMarket","mobileDataTime","mobileRefresh","mobileValidation","mobilePending","rankingView","rankingCount","notice"];
+const ids=["marketStatus","dataTime","refreshCountdown","validationStatus","underlyingPrice","mobileSymbol","mobilePrice","mobileMarket","mobileDataTime","mobileRefresh","mobileValidation","mobilePending","rankingView","rankingCount","notice"];
 const nodes=new Map(ids.map(id=>[id,{textContent:"",dataset:{},classList:{toggle(){}}}]));
 const ctx={module:{exports:{}},console,document:{getElementById(id){if(!nodes.has(id))throw new Error(`unexpected node access: ${id}`);return nodes.get(id)}}};
 vm.createContext(ctx);vm.runInContext(fs.readFileSync("./web/us-equities/app.js","utf8"),ctx);
