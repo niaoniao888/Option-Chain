@@ -245,6 +245,9 @@ main {
   gap: 12px;
   margin-bottom: 10px;
 }
+.ranking-controls {
+  justify-content: flex-start;
+}
 .panel[data-panel="price"] .controls {
   justify-content: flex-start;
   gap: 20px;
