@@ -546,10 +546,11 @@ export class Dashboard {
   }
   renderRanking(rows) {
     const columns = this.adapter.rankingColumns;
+    const annualLabel = `${this.state.rankingSide === "PUT" ? "Sell Put" : "Covered Call"}<br>年化`;
     this.$("rankingHeadRow").innerHTML = columns
       .map(
         (key) =>
-          `<th><button data-sort="${key}">${rankingLabels[key] || key} <span class="arrow"></span></button></th>`,
+          `<th><button data-sort="${key}">${key === "annualized_pct" ? annualLabel : rankingLabels[key] || key} <span class="arrow"></span></button></th>`,
       )
       .join("");
     const eligible = rows.filter(
