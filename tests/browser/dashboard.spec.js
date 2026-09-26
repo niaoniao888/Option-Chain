@@ -559,6 +559,9 @@ test("text selection defers table replacement then flushes", async ({
     route.fulfill({ json: { ...btc, market_generation_ms: now + requests } });
   });
   await page.goto("/bitcoin/mobile/");
+  await expect(
+    page.locator("#chainBody .sticky-strike").first(),
+  ).toBeVisible();
   await page.evaluate(() => {
     const node = document.querySelector("#chainBody td");
     const range = document.createRange();
@@ -585,11 +588,28 @@ test("text selection defers table replacement then flushes", async ({
 test("same snapshot generation keeps table DOM stable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await mockApi(page);
-  await page.goto("/bitcoin/mobile/");
-  await page.evaluate(() => {
-    window.__firstChainRow = document.querySelector("#chainBody tr");
+  await page.unroute("**/api/v1/bitcoin/snapshot");
+  let requests = 0;
+  await page.route("**/api/v1/bitcoin/snapshot", async (route) => {
+    requests += 1;
+    if (requests === 1)
+      await new Promise((resolve) => setTimeout(resolve, 750));
+    await route.fulfill({ json: btc });
   });
+  await page.goto("/bitcoin/mobile/");
+  await expect(
+    page.locator("#chainBody .sticky-strike").first(),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => {
+      const row = document.querySelector("#chainBody tr");
+      if (!row) return false;
+      window.__firstChainRow = row;
+      return true;
+    }),
+  ).toBeTruthy();
   await page.waitForTimeout(5500);
+  expect(requests).toBeGreaterThanOrEqual(2);
   expect(
     await page.evaluate(
       () => window.__firstChainRow === document.querySelector("#chainBody tr"),
