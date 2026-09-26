@@ -73,3 +73,32 @@ Windows loopback，对快照 API 发起 100 次请求，并发 8：无错误；G
 - 未接入美股行情或账户数据；未来模块需独立核验合约、交易时间、数据源及适用权限。
 
 复测入口、故障处理和上线前后检查见 [运行维护](OPERATIONS.md)。打包清单与压缩包校验文件由 `scripts/package_release.py` 生成，发布前按新版本重新运行，不能复用旧结果冒充本次验证。
+
+## 2026-09-26 统一响应式前台候选验收
+
+本节只记录当前候选工作树的本地结果，尚未经过独立 reviewer、Git 提交或部署。四个 BTC/美股 PC/手机 URL 现在由同一个 `web/app/index.html` 和 ESM 组件树提供；美股管理页继续独立。
+
+### 测试迁移对照
+
+- 原 `tests/test_ui.js` 与美股前端测试中针对整页压缩源码、选择器字符串和 CommonJS VM 的断言，改为直接导入 ESM 的状态、轮询、投影、适配器与 Dashboard 纯函数测试。
+- storage 覆盖安全 getter/method 异常、market/provider/instrument/mode 隔离、旧键适用边界及 delta/expiry 排序键迁移。
+- polling 覆盖单链、超时、429 上限、hidden 立即恢复、lease `active=0`、错误状态保留及定时器上限；同一 generation/version 的浏览器测试额外断言表格 DOM 不替换，新代次才进入受保护刷新。
+- US 覆盖中国到期日期/分钟、日期合法性、市场切换/报价有效期、重复同 strike/side 合约、概率排序、分页空态恢复与跨股票排序状态。
+- BTC 覆盖 15 天默认到期、30 分钟结算、OI=0、负/零时间价值、Mark 参考、概率极值/null、Call/Put 单期行数差异，浏览器不重算后台金融值。
+- Playwright 覆盖菜单键盘与焦点回归、文字选择/指针保护、排序分页、股票切换、第三测试市场注册后通过同一 Dashboard 渲染。
+
+### 实际结果
+
+| 检查 | 结果 |
+| --- | --- |
+| Python compileall | 通过 |
+| Python unittest | 172/172 通过 |
+| Node ESM 行为与 bootstrap | 2/2 通过；无消费者的旧 guide 前端测试随资源删除 |
+| Prettier | `format:check` 通过 |
+| Playwright Chromium | 20/20 通过 |
+| 浏览器矩阵 | BTC/US × PC/手机 × 三视图 × 深浅主题；320/390/430/1280/1920 CSS px；另测 150% zoom |
+| 视觉证据 | HTML 报告保存 60 张矩阵截图，并断言 BTC 基准的 panel 圆角、Call/Put 宽高字重、主题色及页面横向溢出 |
+
+Playwright 使用 collector-disabled 的临时 8785 服务和内联测试快照，测试结束自动关闭；没有访问真实行情或个人数据。未验证实体手机，也未建立跨 Windows/Linux 字体像素完全一致的截图基线；CI 主要使用 computed style、交互、尺寸和布局断言，截图作为当次运行证据。
+
+后台平台阶段曾从 171 项基线删除 19 项旧前端源码实现断言、增加 18 项注册表/生命周期/契约测试，形成 170 项候选；本轮再增加 provider selector 初始化隔离和结构化刷新日志测试，当前为 172 项。计数变化不代表减少金融公式覆盖。Playwright 报告位于被 Git 忽略的 `playwright-report/`，CI 无论成功失败均上传该报告。

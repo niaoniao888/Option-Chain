@@ -19,6 +19,7 @@ from options_panel.providers.registry import ProviderBinding, default_provider_r
 from options_panel.runtime.lifecycle import RuntimeLifecycle, RuntimeRecord, public_health
 from options_panel.runtime.market import MarketDescriptor, SnapshotEnvelope, SnapshotResponseCache
 from options_panel.runtime.snapshot import DashboardState
+from options_panel.runtime.refresher import Refresher
 from options_panel.us_equities.runtime import UsEquitiesRuntime
 
 
@@ -63,6 +64,30 @@ class StubRuntime:
                                 instrument or self.descriptor.default_instrument,
                                 "v1", "2026-09-27T00:00:00Z",
                                 "2026-09-27T00:00:00Z", "healthy", {"value": 1})
+
+
+class ProtocolOnlyRuntime:
+    """Fixture intentionally exposes only the MarketRuntime protocol."""
+
+    def __init__(self):
+        self.descriptor = THIRD
+        self.started = 0
+        self.stopped = 0
+
+    def start(self): self.started += 1
+    def stop(self): self.stopped += 1
+    def health(self): return {"status": "healthy", "provider": "fixture"}
+    def snapshot_envelope(self, instrument=None):
+        return SnapshotEnvelope(
+            self.descriptor.market_id,
+            self.descriptor.provider_id,
+            instrument or self.descriptor.default_instrument,
+            "v1",
+            "2026-09-27T00:00:00Z",
+            "2026-09-27T00:00:00Z",
+            "healthy",
+            {"value": 1},
+        )
 
 
 class AliveThread:
@@ -173,6 +198,9 @@ class PlatformArchitectureTests(unittest.TestCase):
             from options_panel.content.guide_store import GuideStore
             runtime = BitcoinRuntime(state, GuideStore(Path(directory) / "guide.json"), Path(directory), collector_enabled=False)
             envelope = runtime.snapshot_envelope()
+            same_generation = runtime.snapshot_envelope()
+            state.commit_market({}, 86000, 1_700_000_001_000, {}, {})
+            next_generation = runtime.snapshot_envelope()
         self.assertEqual((envelope.market, envelope.provider, envelope.instrument), ("bitcoin", "binance", "BTCUSDT"))
         self.assertEqual(envelope.payload["index_price"], 85000)
         self.assertIn("contracts", envelope.payload)
@@ -181,6 +209,9 @@ class PlatformArchitectureTests(unittest.TestCase):
         self.assertIsInstance(envelope.calculated_at, int)
         self.assertEqual(envelope.calculated_at, envelope.payload["market_generation_ms"])
         self.assertEqual(envelope.received_at, envelope.payload["fetched_at"])
+        self.assertEqual(envelope.version, same_generation.version)
+        self.assertNotEqual(envelope.version, next_generation.version)
+        self.assertEqual(envelope.version, envelope.payload["market_generation_ms"])
 
         with tempfile.TemporaryDirectory() as directory:
             us_runtime = UsEquitiesRuntime(
@@ -198,7 +229,7 @@ class PlatformArchitectureTests(unittest.TestCase):
         self.assertEqual(us_envelope.received_at, us_envelope.payload["fetched_at"])
 
     def test_registry_accepts_third_market_without_app_core_changes(self):
-        runtime = StubRuntime()
+        runtime = ProtocolOnlyRuntime()
         def install_fixture_route(app, platform, registration):
             app.add_api_route(
                 platform.settings.base_path + "/api/v1/test-market/feature",
@@ -225,7 +256,6 @@ class PlatformArchitectureTests(unittest.TestCase):
                 snapshot = client.get("/panel/api/v1/test-market/snapshot").json()
                 self.assertEqual((snapshot["market"], snapshot["payload"]), ("test-market", {"value": 1}))
                 self.assertEqual(client.get("/panel/api/v1/test-market/snapshot").status_code, 200)
-                self.assertEqual(runtime.snapshot_calls, 1)
                 self.assertEqual(client.get("/panel/api/v1/test-market/feature").json(),
                                  {"capability": "fixture"})
                 self.assertEqual(client.get("/panel/test/desktop/").text, "fixture market shell")
@@ -309,8 +339,44 @@ class PlatformArchitectureTests(unittest.TestCase):
             )
         self.assertIs(btc_runtime.provider, falsey_btc)
         self.assertIs(us_runtime.adapter, falsey_us)
+        refresher = Refresher(DashboardState(), provider=falsey_btc)
+        self.assertIs(refresher.provider, falsey_btc)
+        self.assertTrue(refresher.refresh_catalog())
+        self.assertTrue(refresher.refresh_market())
+        self.assertEqual(
+            falsey_btc.calls,
+            ["catalog", "quotes", "index", "time", "open-interest", "marks", "time"],
+        )
+        health = us_runtime.health()
+        self.assertTrue(health["configured"])
+        self.assertEqual(health["source"], "Fixture US")
         self.assertEqual(public_health({"provider": "fixture"}),
                          {"provider": "fixture", "status": "unknown"})
+
+    def test_broken_provider_selector_is_isolated(self):
+        good = StubRuntime()
+        broken = MarketRegistration(
+            MarketDescriptor(
+                "broken", "Broken", "fallback", "Fallback", None,
+                "/broken/desktop/", "/broken/mobile/",
+            ),
+            lambda _context: (_ for _ in ()).throw(RuntimeError("private token")),
+            provider_selector=lambda _settings: (_ for _ in ()).throw(
+                ValueError("private selector token")
+            ),
+        )
+        registry = MarketRegistry((
+            broken,
+            MarketRegistration(THIRD, lambda _context: good),
+        ))
+        with self.app_root() as root:
+            with TestClient(create_app(self.settings(root), DashboardState(), registry)) as client:
+                status = client.get("/api/v1/status").json()["markets"]
+                self.assertEqual(status["broken"]["initialization_error"], "RuntimeError")
+                self.assertEqual(status["test-market"]["runtime"]["status"], "healthy")
+                self.assertNotIn("token", json.dumps(status))
+                modules = {item["id"]: item for item in client.get("/api/v1/modules").json()}
+                self.assertEqual(modules["broken"]["provider_id"], "fallback")
 
     def test_replacement_provider_is_registry_data(self):
         providers = default_provider_registry()

@@ -26,12 +26,16 @@ class IntegrationTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        for relative in ("web/hub", "web/desktop", "web/mobile", "web/shared", "web/us-equities", "content"):
+        for relative in ("web/hub", "web/app/core", "web/app/components", "web/app/markets", "web/shared", "web/us-equities", "content"):
             (self.root / relative).mkdir(parents=True, exist_ok=True)
         (self.root / "web/hub/index.html").write_text("<html></html>", encoding="utf-8")
-        (self.root / "web/desktop/index.html").write_text("<html></html>", encoding="utf-8")
-        (self.root / "web/mobile/index.html").write_text("<html></html>", encoding="utf-8")
-        for name in ("index.html", "app.js", "style.css", "guide.js", "admin.html", "admin.js", "admin.css"):
+        for name in (
+            "index.html", "main.js", "styles.css", "core/formats.js", "core/model.js",
+            "core/polling.js", "core/state.js", "components/dashboard.js", "components/menu.js",
+            "markets/bitcoin.js", "markets/registry.js", "markets/us-equities.js",
+        ):
+            (self.root / "web/app" / name).write_text("fixture", encoding="utf-8")
+        for name in ("admin.html", "admin.js", "admin.css"):
             (self.root / "web/us-equities" / name).write_text("fixture", encoding="utf-8")
         (self.root / "content/options-guide.json").write_text(
             json.dumps({"revision": "r1", "updated_at": "2026-09-26T00:00:00Z", "sections": []}),
@@ -62,8 +66,8 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(client.get("/us-equities/desktop", follow_redirects=False).headers["location"], "/us-equities/desktop/")
             self.assertEqual(client.get("/us-equities/desktop/").status_code, 200)
             self.assertEqual(client.get("/us-equities/mobile/").status_code, 200)
-            self.assertEqual(client.get("/us-equities/desktop/app.js").status_code, 200)
-            self.assertEqual(client.get("/us-equities/mobile/guide.js").status_code, 200)
+            self.assertEqual(client.get("/us-equities/desktop/main.js").status_code, 200)
+            self.assertEqual(client.get("/us-equities/mobile/core/state.js").status_code, 200)
             self.assertEqual(client.get("/us-equities/desktop/secret.txt").status_code, 404)
             modules = client.get("/api/v1/modules").json()
             self.assertEqual([module["id"] for module in modules], ["bitcoin", "us-equities"])
@@ -77,7 +81,7 @@ class IntegrationTests(unittest.TestCase):
 
         with TestClient(create_app(self.settings("/panel"), DashboardState())) as client:
             self.assertEqual(client.get("/panel/us-equities/mobile/").status_code, 200)
-            self.assertEqual(client.get("/panel/us-equities/mobile/style.css").status_code, 200)
+            self.assertEqual(client.get("/panel/us-equities/mobile/styles.css").status_code, 200)
             self.assertEqual(client.get("/panel/api/v1/us-equities/watchlist").status_code, 200)
             us_module = client.get("/panel/api/v1/modules").json()[1]
             self.assertEqual(us_module["desktop_path"], "/panel/us-equities/desktop/")

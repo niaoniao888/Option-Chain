@@ -1,0 +1,14 @@
+{
+  "name": "unified-options-panel",
+  "private": true,
+  "scripts": {
+    "format": "prettier --write web/app tests/test_ui.js tests/test_bootstrap.js tests/browser playwright.config.js",
+    "format:check": "prettier --check web/app tests/test_ui.js tests/test_bootstrap.js tests/browser playwright.config.js",
+    "test:ui": "node tests/test_ui.js && node tests/test_bootstrap.js",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.1",
+    "prettier": "3.6.2"
+  }
+}

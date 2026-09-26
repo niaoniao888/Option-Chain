@@ -34,6 +34,13 @@ class StaticPageConfig:
     index_name: str = "index.html"
 
 
+APP_ASSETS = (
+    "main.js", "styles.css", "core/formats.js", "core/model.js", "core/polling.js",
+    "core/state.js", "components/dashboard.js", "components/menu.js",
+    "markets/bitcoin.js", "markets/registry.js", "markets/us-equities.js",
+)
+
+
 @dataclass(frozen=True)
 class MarketRegistration:
     descriptor: MarketDescriptor
@@ -98,17 +105,16 @@ def default_registry() -> MarketRegistry:
         MarketRegistration(
             BitcoinRuntime.descriptor, _bitcoin_runtime, api_profile="bitcoin",
             static_page=StaticPageConfig(
-                desktop_dir="desktop", mobile_dir="mobile",
-                desktop_assets=("app.js", "style.css"), mobile_assets=("mobile.js", "mobile.css"),
+                desktop_dir="app", mobile_dir="app",
+                desktop_assets=APP_ASSETS, mobile_assets=APP_ASSETS,
             ),
             provider_selector=lambda settings: settings.bitcoin_provider,
         ),
         MarketRegistration(
             UsEquitiesRuntime.descriptor, _us_runtime, api_profile="us-equities",
             static_page=StaticPageConfig(
-                desktop_dir="us-equities", mobile_dir="us-equities",
-                desktop_assets=("app.js", "style.css", "guide.js"),
-                mobile_assets=("app.js", "style.css", "guide.js"),
+                desktop_dir="app", mobile_dir="app",
+                desktop_assets=APP_ASSETS, mobile_assets=APP_ASSETS,
             ),
             provider_selector=lambda settings: settings.us_equities_provider,
         ),

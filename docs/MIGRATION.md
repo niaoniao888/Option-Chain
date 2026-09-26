@@ -7,12 +7,11 @@
 | `server.py` 计算函数 | `domain/calculations.py`，10 个函数迁移时 AST 核对一致 |
 | `server.py` 请求与解析 | `providers/binance.py` |
 | `server.py` 状态与采集 | `runtime/snapshot.py`、`runtime/refresher.py` |
-| `server.py` HTTP / 启动 | FastAPI `api.py`、Uvicorn `cli.py`，不再用 ThreadingHTTPServer |
+| `server.py` HTTP / 启动 | FastAPI `app_factory.py` + `routes/`、Uvicorn `cli.py`，`api.py` 只保留兼容导出；不再用 ThreadingHTTPServer |
 | `mobile_server.py` | 退役；手机版与桌面版由同一个新服务提供，不再代理旧 PC 端口 |
 | `guide_store.py` | 新 `content/guide_store.py` 只读校验；原匿名本机编辑接口不进入公共版 |
-| `static/index.html`, `app.js`, `style.css` | `web/desktop/` |
-| `static/mobile.html`, `mobile.js`, `mobile.css` | `web/mobile/`，入口文件统一叫 `index.html` |
-| `static/guide.js`, `guide.css` | `web/shared/` |
+| `static/index.html`、`mobile.html` 及行情脚本/CSS | 先独立迁移，2.1.0 最终合并为 `web/app/` 单一响应式 shell |
+| `static/guide.js`, `guide.css` | 主看板说明入口取消后删除前端遗留；说明 JSON API/存储继续兼容 |
 | `data/options-guide.json` | `content/options-guide.json`，保留已编辑正文 |
 | 本机 `.lnk` 与含个人 Python 路径的入口 | 不复制；新的相对路径脚本与 `start-panel.cmd` |
 | 旧 README / 长期验收流水 | 本文档体系重新梳理；原文仍在原项目，交接包不塞入重复历史文件 |
@@ -35,4 +34,8 @@
 
 ## 2.1.0 美股整合
 
-旧美股根目录业务 Python 文件迁到 `src/options_panel/us_equities/`，改为包内导入；原 static 迁到 `web/us-equities/`。旧 PC writer / mobile gateway 不迁入，以 FastAPI 只读 API 与独立 admin 替代。主项目不依赖旧路径。仅私有运行数据按 [美股迁移步骤](US-EQUITIES.md) 复制，旧文件保留。
+旧美股根目录业务 Python 文件迁到 `src/options_panel/us_equities/`，改为包内导入；行情页面最终迁到统一 `web/app/`，`web/us-equities/` 只保留独立 admin。旧 PC writer / mobile gateway 不迁入，以 FastAPI 只读 API 与独立 admin 替代。主项目不依赖旧路径。仅私有运行数据按 [美股迁移步骤](US-EQUITIES.md) 复制，旧文件保留。
+
+## 统一响应式前台
+
+`web/desktop`、`web/mobile`、原 `web/us-equities` 看板合并到 `web/app`，美股 `admin.*` 仍独立。四个旧 URL 保持兼容，route mode 继续参与状态键。新状态键按 market/provider/instrument/mode 隔离；旧记忆只在原 Binance BTC 手机端或 Alpaca 美股范围内迁移，旧 `delta` 排序迁到 `exercise_probability_pct`。

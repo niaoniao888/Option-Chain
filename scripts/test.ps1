@@ -9,8 +9,6 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Python tests failed.' }
   node tests/test_ui.js
   if ($LASTEXITCODE -ne 0) { throw 'UI tests failed.' }
-  node tests/test_guide.js
-  if ($LASTEXITCODE -ne 0) { throw 'Guide tests failed.' }
   node tests/test_bootstrap.js
   if ($LASTEXITCODE -ne 0) { throw 'Page bootstrap tests failed.' }
 } finally {

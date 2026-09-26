@@ -9,9 +9,44 @@ from contextlib import redirect_stderr
 from pathlib import Path
 
 from options_panel.logging import JsonFormatter, LOGGER, configure_logging, log_event
+from options_panel.us_equities.market_service import MarketService
 
 
 class LoggingTests(unittest.TestCase):
+    def test_market_refresh_log_has_common_safe_dimensions(self):
+        records = []
+
+        class Capture(logging.Handler):
+            def emit(self, record):
+                records.append(json.loads(JsonFormatter().format(record)))
+
+        class Adapter:
+            source_name = "Fixture"
+            ready = True
+
+            def fetch(self, symbol):
+                return {
+                    "symbol": symbol,
+                    "contracts": [],
+                    "underlying_price": 1.0,
+                    "market_status": "OPEN",
+                    "calculated_at": "2026-09-26T00:00:00Z",
+                    "notice": "secret=must-not-be-logged",
+                }
+
+        handler = Capture()
+        LOGGER.addHandler(handler)
+        self.addCleanup(LOGGER.removeHandler, handler)
+        self.assertTrue(MarketService(Adapter()).refresh("TEST"))
+        event = next(item for item in records if item["event"] == "market_refresh_round")
+        for key in (
+            "market", "provider", "instrument", "duration_ms",
+            "consecutive_failures", "age_seconds", "queue_wait_ms",
+            "cache_size", "contract_count",
+        ):
+            self.assertIn(key, event)
+        self.assertNotIn("secret", json.dumps(event))
+
     def test_json_log_contains_fields_without_traceback_or_paths(self):
         try:
             raise OSError("private response marker")

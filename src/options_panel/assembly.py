@@ -8,6 +8,8 @@ from options_panel.runtime.lifecycle import RuntimeLifecycle, RuntimeRecord
 from options_panel.runtime.market import SnapshotResponseCache
 from options_panel.runtime.snapshot import DashboardState
 from options_panel.providers.registry import ProviderRegistry, default_provider_registry
+from options_panel.logging import log_event
+import logging
 
 
 @dataclass
@@ -48,8 +50,13 @@ def assemble_platform(settings: Settings, state: DashboardState | None = None,
                 market_id=market_id, descriptor=runtime.descriptor, runtime=runtime,
             )
         except Exception as exc:
-            provider_id = (registration.provider_selector(settings)
-                           if registration.provider_selector else registration.descriptor.provider_id)
+            provider_id = registration.descriptor.provider_id
+            selector_error = None
+            if registration.provider_selector:
+                try:
+                    provider_id = registration.provider_selector(settings)
+                except Exception as selector_exc:
+                    selector_error = type(selector_exc).__name__
             unavailable = replace(
                 registration.descriptor, provider_id=provider_id, provider_name=provider_id,
                 status="unavailable",
@@ -57,6 +64,14 @@ def assemble_platform(settings: Settings, state: DashboardState | None = None,
             records[market_id] = RuntimeRecord(
                 market_id=market_id, descriptor=unavailable,
                 initialization_error=type(exc).__name__,
+            )
+            log_event(
+                logging.WARNING,
+                "market_runtime_initialization_failed",
+                market=market_id,
+                provider=provider_id,
+                exception_type=type(exc).__name__,
+                provider_selector_exception_type=selector_error,
             )
     lifecycle = RuntimeLifecycle(records)
     return Platform(settings, selected, records, lifecycle, SnapshotResponseCache(), dashboard)

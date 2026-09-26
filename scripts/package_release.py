@@ -10,7 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = (
-    "README.md", "CONTRIBUTING.md", "CHANGELOG.md", "pyproject.toml",
+    "README.md", "AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "pyproject.toml",
+    "package.json", "package-lock.json", "playwright.config.js",
     "requirements.txt", "requirements.lock", "requirements-dev.lock",
     "start-panel.cmd", "start-admin.cmd", "Dockerfile", "compose.yaml", ".env.example",
     ".gitignore", ".dockerignore",

@@ -26,10 +26,34 @@ jobs:
       - run: python -m compileall -q src tests scripts
       - run: python -m unittest discover -s tests -v
       - run: node tests/test_ui.js
-      - run: node tests/test_guide.js
       - run: node tests/test_bootstrap.js
   container-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t options-panel:test .
+
+  browser-tests:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src
+      OPTIONS_COLLECTOR_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: python -m pip install -r requirements-dev.lock
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: error

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
@@ -33,8 +33,14 @@ def install_static_routes(app: FastAPI, platform: Platform) -> None:
         return handler
 
     def asset_handler(directory: str, allowed: tuple[str, ...]):
-        def handler(name: str):
-            return (file(settings.web_dir / directory / name) if name in allowed
+        allowed_set = set(allowed)
+        root = (settings.web_dir / directory).resolve()
+        def handler(asset_path: str):
+            normalized = PurePosixPath(asset_path)
+            safe = (asset_path in allowed_set and not normalized.is_absolute()
+                    and ".." not in normalized.parts and "" not in normalized.parts)
+            target = (root / Path(*normalized.parts)).resolve() if safe else root
+            return (file(target) if safe and target.is_relative_to(root)
                     else JSONResponse({"error": "静态资源不存在"}, status_code=404))
         return handler
 
@@ -49,14 +55,5 @@ def install_static_routes(app: FastAPI, platform: Platform) -> None:
             app.add_api_route(p(route.rstrip("/")), redirect_handler(route), methods=["GET"],
                               name=endpoint + "_redirect")
             app.add_api_route(p(route), page_handler(directory, page.index_name), methods=["GET"], name=endpoint)
-            app.add_api_route(p(route + "{name}"), asset_handler(directory, assets), methods=["GET"],
+            app.add_api_route(p(route + "{asset_path:path}"), asset_handler(directory, assets), methods=["GET"],
                               name=endpoint + "_asset")
-
-    @app.get(p("/bitcoin/shared/{name}"))
-    def shared_asset(name: str):
-        allowed = {"guide.js", "guide.css", "period-return.js", "period-return.css", "market-shell.css"}
-        return file(settings.web_dir / "shared" / name) if name in allowed else JSONResponse({"error": "静态资源不存在"}, status_code=404)
-
-    @app.get(p("/shared/{name}"))
-    def global_shared_asset(name: str):
-        return file(settings.web_dir / "shared" / name) if name == "market-shell.css" else JSONResponse({"error": "静态资源不存在"}, status_code=404)

@@ -100,7 +100,7 @@ class BitcoinRuntime:
         return SnapshotEnvelope(
             market=self.descriptor.market_id, provider=self.provider_id,
             instrument=instrument or self.descriptor.default_instrument,
-            version=status.get("version"), received_at=payload.get("fetched_at"),
+            version=payload.get("market_generation_ms"), received_at=payload.get("fetched_at"),
             calculated_at=payload.get("market_generation_ms"),
             status=status.get("status", "unknown"), payload=payload,
         )

@@ -69,10 +69,8 @@ python -m options_panel --host 127.0.0.1 --port 8780
 ├── src/options_panel/        后端；各文件职责见架构文档
 ├── web/                      浏览器界面
 │   ├── hub/                  一级“期权面板”模块入口
-│   ├── desktop/              比特币桌面版
-│   ├── mobile/               比特币手机版
-│   ├── us-equities/          美股 PC/手机及本机管理页面
-│   └── shared/               共用视觉规范及 BTC 展示组件
+│   ├── app/                  BTC/美股共用响应式 shell、组件和市场适配器
+│   └── us-equities/          独立的本机管理页面
 ├── content/                  经维护人员审核的说明内容
 ├── tests/                    不访问真实行情的回归测试（含 us_equities/）
 ├── scripts/                  安装、启动、测试、验证、打包

@@ -28,6 +28,8 @@ class MarketDescriptor:
             "desktop_path": base_path + self.desktop_path,
             "mobile_path": base_path + self.mobile_path,
             "provider": self.provider_name,
+            "provider_id": self.provider_id,
+            "default_instrument": self.default_instrument,
         }
 
 

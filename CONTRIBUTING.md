@@ -1,23 +1,26 @@
 # 开发与验收约定
 
-1. 从 README 和架构图开始。保持 provider（请求/解析）、domain（算法）、runtime（刷新/状态）、api（路由）边界。
-2. 计算规则与显示规则分别修改。不得把 null 当成 0，不得用 Mark/成交价悄悄替代 Bid，不得用读接口时间逐秒重算旧收益。
-3. 每个模块只有一个采集所有者。修改生命周期、缓存或并发前，先补失败/恢复/多实例测试。
-4. 公共入口保持只读；后续编辑功能必须采用网站真正的身份鉴权，不能依据 localhost/Host 判断管理员。
-5. 修改文件后运行 Python 和 Node 测试。Windows 用 `scripts/test.ps1`；Linux 命令见下。
-6. 页面改动须用真实浏览器检查。测试夹具通过不能代替 HTML/脚本组合、样式、窄屏和刷新恢复的实际验证。
-7. 变更接口、配置或模块边界时同步 docs。依赖升级更新 lock，并记录 Python/框架版本与复测结果。
-8. 界面以 BTC 为默认基准；新增市场或调整通用控件先阅读 [统一界面规范](docs/UI-STANDARDS.md)，复用共享样式并跨市场验收。
-9. 日志、快照、密钥、真实 `.env`、虚拟环境不提交。`/runtime/` 的忽略规则必须保持根目录限定，不能误忽略 `src/options_panel/runtime/`。
+1. 从 README、架构和界面规范开始。保持 provider、domain、runtime、routes 与前端 adapter/component 边界。
+2. 不得把 null 当 0，不得用 Mark/成交价代替 Bid，不得在浏览器重算冻结的收益和概率。
+3. 每个市场只有一个采集所有者。改生命周期、缓存、租约或队列前先补失败、恢复和重复启动测试。
+4. 公共入口只读；本机管理页继续使用会话授权，不能以 localhost 或隐藏按钮代替鉴权。
+5. 新 provider 通过 ProviderRegistry 注入同一 MarketRuntime；新市场通过 MarketRegistration 声明 descriptor、路由和静态页面。
+6. 通用前端只操作 adapter 协议；市场特有日期、资格、列、精度和展示由 adapter 提供。
+7. 页面改动须验证 BTC/US × 桌面/手机 × 三视图 × 深浅主题，并覆盖 320/390/430/1280/1920 和 150% 缩放。
+8. 变更接口、配置、注册协议或目录时同步 docs；依赖变更同步 package lock 或 Python lock。
+9. 日志、快照、密钥、真实 .env、虚拟环境和 Playwright 运行报告不提交。
 
-```sh
-export PYTHONPATH="$PWD/src"
-python -m pip install -r requirements-dev.lock
-python -m compileall -q src tests scripts
-python -m unittest discover -s tests -v
+Windows PowerShell：
+
+```powershell
+$env:PYTHONPATH = "src"
+$env:OPTIONS_COLLECTOR_ENABLED = "false"
+& "F:\【股票】\【期权面板】\【比特币面板】\.venv\Scripts\python.exe" -m compileall -q src tests scripts
+& "F:\【股票】\【期权面板】\【比特币面板】\.venv\Scripts\python.exe" -m unittest discover -s tests -v
 node tests/test_ui.js
-node tests/test_guide.js
 node tests/test_bootstrap.js
+npm run format:check
+npm run test:e2e
 ```
 
-维护说明时编辑 `content/options-guide.json` 的 section/topic 正文，保持唯一 ID。内容审核通过后更新 `revision`（字符串）和 `updated_at`（UTC ISO），运行测试后发布。浏览器没有写入接口。
+说明 JSON 和管理存储继续由后端测试覆盖；主看板已取消说明 UI 和旧 `web/shared` 渲染资源。

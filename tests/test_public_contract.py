@@ -76,6 +76,11 @@ class PublicContractTests(unittest.TestCase):
         spec.loader.exec_module(module)
         files = [p.relative_to(ROOT).as_posix() for p in module.source_files()]
         self.assertIn("src/options_panel/runtime/snapshot.py", files)
+        for required in (
+            "AGENTS.md", "package.json", "package-lock.json",
+            "playwright.config.js", "tests/browser/dashboard.spec.js",
+        ):
+            self.assertIn(required, files)
         self.assertTrue(all(not p.startswith(("runtime/", ".venv/", "dist/")) for p in files))
 
 

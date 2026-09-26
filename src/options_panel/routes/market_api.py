@@ -34,7 +34,9 @@ def install_market_routes(app: FastAPI, platform: Platform) -> None:
                 if runtime is None:
                     return unavailable(selected_market)
                 selected = instrument or runtime.descriptor.default_instrument
-                key = platform.snapshot_cache.key(selected_market, runtime.provider_id, selected)
+                key = platform.snapshot_cache.key(
+                    selected_market, runtime.descriptor.provider_id, selected
+                )
                 return Response(
                     platform.snapshot_cache.body(
                         key, lambda: runtime.snapshot_envelope(selected).as_dict(),

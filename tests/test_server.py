@@ -53,8 +53,8 @@ class FormulaTests(unittest.TestCase):
 
     def test_timezone_serialization_is_utc_and_frontend_declares_shanghai(self):
         self.assertTrue(server.utc_iso(0).endswith("Z"))
-        js = (Path(__file__).resolve().parents[1] / "web" / "desktop" / "app.js").read_text(encoding="utf-8")
-        self.assertIn('timeZone:"Asia/Shanghai"', js)
+        js = (Path(__file__).resolve().parents[1] / "web" / "app" / "core" / "formats.js").read_text(encoding="utf-8")
+        self.assertIn('timeZone: "Asia/Shanghai"', js)
 
     def test_empty_ticker_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "未返回"):

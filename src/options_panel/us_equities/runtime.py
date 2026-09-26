@@ -9,9 +9,8 @@ from options_panel.runtime.lock import ProcessLock
 from options_panel.runtime.market import MarketDescriptor, SnapshotEnvelope
 
 from .alpaca_adapter import AlpacaAdapter, AlpacaHttp, probe_credentials
-from .credential_store import CredentialError, load_credentials
 from .guide_store import GuideStore
-from .market_service import MarketService
+from .market_service import MarketService, adapter_configuration
 from .network_diagnostics import SafeJsonlLog
 from .refresh_policy import public_refresh_policy
 from .watchlist_store import WatchlistStore
@@ -110,12 +109,9 @@ class UsEquitiesRuntime:
         )
 
     def health(self) -> dict[str, Any]:
-        config_error = None
-        try:
-            configured = load_credentials() is not None
-        except CredentialError as exc:
-            configured = False
-            config_error = str(exc)
+        configuration = adapter_configuration(self.adapter)
+        configured = configuration["configured"]
+        config_error = configuration["error"]
         collector_running = bool(self._thread and self._thread.is_alive())
         if self._startup_error:
             status = "collector_error"

@@ -15,7 +15,7 @@ class Refresher(threading.Thread):
         super().__init__(name="bitcoin-options-cache-refresh", daemon=True)
         self.state = state
         self.fetch = fetch
-        self.provider = provider or BinanceOptionsProvider(fetch)
+        self.provider = BinanceOptionsProvider(fetch) if provider is None else provider
         self.stop_event = threading.Event()
         self.market_failures = 0
         self.catalog_failures = 0
@@ -83,11 +83,17 @@ class Refresher(threading.Thread):
                     stats = self.state.refresh_log_stats()
                     log_event(
                         logging.INFO if success else logging.WARNING, "catalog_refresh_round",
+                        market="bitcoin",
+                        provider=getattr(self.provider, "source_name", type(self.provider).__name__),
+                        instrument="BTCUSDT",
                         result="success" if success else "failed",
                         duration_ms=round((time.monotonic() - started) * 1000, 1),
                         consecutive_failures=self.catalog_failures, scheduled_interval_seconds=delay,
                         recovered=success and previous > 0, contract_count=stats["contract_count"],
-                        error=stats["catalog_error"],
+                        age_seconds=self.state.health().get("age_seconds"),
+                        queue_wait_ms=0,
+                        cache_size=1,
+                        has_error=bool(stats["catalog_error"]),
                     )
                 now = self.state.monotonic()
                 _, next_market = self.state.refresh_deadlines()
@@ -100,13 +106,20 @@ class Refresher(threading.Thread):
                     stats = self.state.refresh_log_stats()
                     log_event(
                         logging.INFO if success else logging.WARNING, "market_refresh_round",
+                        market="bitcoin",
+                        provider=getattr(self.provider, "source_name", type(self.provider).__name__),
+                        instrument="BTCUSDT",
                         result="success" if success else "failed",
                         duration_ms=round((time.monotonic() - started) * 1000, 1),
                         consecutive_failures=self.market_failures, scheduled_interval_seconds=delay,
                         recovered=success and previous > 0,
                         contract_count=stats["contract_count"], quote_count=stats["quote_count"],
                         open_interest_count=stats["open_interest_count"], mark_count=stats["mark_count"],
-                        error=stats["market_error"], mark_warning=stats["mark_warning"],
+                        age_seconds=self.state.health().get("age_seconds"),
+                        queue_wait_ms=0,
+                        cache_size=1,
+                        has_error=bool(stats["market_error"]),
+                        has_mark_warning=bool(stats["mark_warning"]),
                     )
                 next_catalog, next_market = self.state.refresh_deadlines()
                 wait_for = max(0.2, min(next_catalog, next_market) - self.state.monotonic())
@@ -116,7 +129,10 @@ class Refresher(threading.Thread):
                 LOGGER.exception(
                     "refresh_loop_error",
                     extra={"event_name": "refresh_loop_error", "event_fields": {
-                        "exception_type": type(exc).__name__, "reason": str(exc),
+                        "market": "bitcoin",
+                        "provider": getattr(self.provider, "source_name", type(self.provider).__name__),
+                        "instrument": "BTCUSDT",
+                        "exception_type": type(exc).__name__,
                     }},
                 )
                 self.stop_event.wait(5.0)

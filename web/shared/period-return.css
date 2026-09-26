@@ -1,8 +1,0 @@
-/* Shared by every period-return cell. Inherit each table's responsive font size. */
-.period-metric{display:inline-grid;justify-items:end;max-width:100%;line-height:1.25;font-variant-numeric:tabular-nums;white-space:nowrap}
-.period-distance,.period-return{display:block;font-size:1em;font-weight:700;white-space:pre}
-.period-distance.positive{color:var(--red)}
-.period-distance.negative{color:var(--green)}
-.period-distance.neutral{color:var(--muted)}
-.period-return{margin-top:2px;color:var(--ink)}
-.period-return:first-child{margin-top:0}

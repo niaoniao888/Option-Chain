@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 import math
 import threading
 import time
@@ -16,6 +17,19 @@ from .refresh_policy import (ACTIVE_WINDOW_SECONDS, MARKET_REFRESH_SECONDS,
                             TASK_START_INTERVAL_SECONDS, IDLE_CACHE_SECONDS,
                             MAX_IDLE_CACHE_SYMBOLS, CLIENT_SEQUENCE_RETENTION_SECONDS, MAX_TRACKED_CLIENTS)
 from .request_throttle import DEFAULT_HTTP_GATE
+from options_panel.logging import log_event
+
+
+def adapter_configuration(adapter) -> dict[str, Any]:
+    capability = getattr(adapter, "configuration_status", None)
+    if callable(capability):
+        result = capability()
+        if isinstance(result, dict):
+            return {
+                "configured": bool(result.get("configured")),
+                "error": result.get("error"),
+            }
+    return {"configured": bool(getattr(adapter, "ready", True)), "error": None}
 
 
 def utc_now_iso(clock: Callable[[], float] = time.time) -> str:
@@ -51,14 +65,20 @@ class MarketService:
         return f"{self._instance_id}:{self._success_count}"
 
     def _pending(self, symbol: str) -> dict[str, Any]:
-        configured = bool(self.adapter.ready)
+        configuration = adapter_configuration(self.adapter)
+        configured = configuration["configured"]
+        configuration_message = (
+            "数据源配置无效，请检查本机管理配置"
+            if configuration["error"]
+            else "数据源尚未配置，请先在本机管理页完成配置"
+        )
         return {"app": "us-options-dashboard", "source": getattr(self.adapter, "source_name", "Alpaca"),
                 "symbol": symbol, "state": "loading" if configured else "configuration_required",
                 "market_status": "UNVERIFIED", "fetch_health": "waiting_for_first_snapshot" if configured else "awaiting_configuration",
                 "source_delay_label": "股票 IEX；期权 Indicative（免费调整参考源，非真实 OPRA）",
                 "freshness": "unavailable", "quote_time": None, "fetched_at": None, "calculated_at": None,
                 "calculation_basis": "等待完整快照", "underlying_price": None, "contracts": [],
-                "error": "正在获取首轮完整快照" if configured else "待配置 Alpaca 凭据，请参阅项目配置说明",
+                "error": "正在获取首轮完整快照" if configured else configuration_message,
                 "mode": "unavailable", "latest_completed_session_date": None,
                 "market_status_valid_until_utc": None,
                 "snapshot_version": self._version(),
@@ -317,8 +337,10 @@ class MarketService:
             stats = dict(self._diagnostics.get(symbol, {}))
             stats["queue_wait_ms"] = max(0, int((started - due) * 1000))
             self._diagnostics[symbol] = stats
+        success = False
         try:
-            return self._refresh_impl(symbol)
+            success = self._refresh_impl(symbol)
+            return success
         finally:
             completed = self.monotonic()
             with self._lock:
@@ -326,8 +348,28 @@ class MarketService:
                 stats = dict(self._diagnostics.get(symbol, {}))
                 stats["fetch_count"] = int(stats.get("fetch_count", 0) or 0) + 1
                 stats["fetch_duration_ms"] = max(0, int((completed - started) * 1000))
+                previous_failures = int(stats.get("consecutive_failures", 0) or 0)
+                stats["consecutive_failures"] = 0 if success else previous_failures + 1
                 self._diagnostics[symbol] = stats
                 self._queued_since.pop(symbol, None)
+                cache_size = len(self._cache)
+                contract_count = len(self._cache.get(symbol, {}).get("contracts", []))
+                last_success = self._last_success.get(symbol)
+                age_seconds = None if last_success is None else max(0.0, completed - last_success)
+            log_event(
+                logging.INFO if success else logging.WARNING,
+                "market_refresh_round",
+                market="us-equities",
+                provider=getattr(self.adapter, "source_name", type(self.adapter).__name__),
+                instrument=symbol,
+                result="success" if success else "failed",
+                duration_ms=stats["fetch_duration_ms"],
+                consecutive_failures=stats["consecutive_failures"],
+                age_seconds=age_seconds,
+                queue_wait_ms=stats.get("queue_wait_ms"),
+                cache_size=cache_size,
+                contract_count=contract_count,
+            )
     def run(self) -> None:
         while not self._stop.wait(SCHEDULER_TICK_SECONDS):
             with self._lock:
@@ -337,7 +379,7 @@ class MarketService:
                 candidates = [(self._next_attempt.get(symbol, 0.0), symbol, symbol not in self._cache)
                               for symbol in active if symbol not in self._inflight
                               and now >= self._next_attempt.get(symbol, 0.0)]
-            if not self.adapter.ready: continue
+            if not adapter_configuration(self.adapter)["configured"]: continue
             if (not candidates or now < self._last_task_started + TASK_START_INTERVAL_SECONDS
                     or self.request_gate.ready_in() > 0):
                 continue

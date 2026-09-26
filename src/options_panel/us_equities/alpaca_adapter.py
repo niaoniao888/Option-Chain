@@ -420,6 +420,12 @@ class AlpacaAdapter:
         try: return self._credentials() is not None
         except AuthorizationRequired: return False
 
+    def configuration_status(self) -> dict[str, Any]:
+        try:
+            return {"configured": self._credentials() is not None, "error": None}
+        except AuthorizationRequired:
+            return {"configured": False, "error": "AuthorizationRequired"}
+
     def _validated_client(self) -> AlpacaHttp:
         credentials = self._credentials()
         if credentials is None: raise AuthorizationRequired("待配置 Alpaca 凭据，请参阅项目配置说明")
