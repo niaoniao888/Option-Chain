@@ -16,6 +16,7 @@ from .refresh_policy import (ACTIVE_WINDOW_SECONDS, MARKET_REFRESH_SECONDS,
                             SCHEDULER_TICK_SECONDS, STALE_AFTER_SECONDS,
                             TASK_START_INTERVAL_SECONDS, IDLE_CACHE_SECONDS,
                             MAX_IDLE_CACHE_SYMBOLS, CLIENT_SEQUENCE_RETENTION_SECONDS, MAX_TRACKED_CLIENTS)
+from .refresh_policy import MAX_ACTIVE_SYMBOLS
 from .request_throttle import DEFAULT_HTTP_GATE
 from options_panel.logging import log_event
 
@@ -137,6 +138,15 @@ class MarketService:
 
     def _touch_lease_locked(self, symbol: str, now: float, client_id: str | None,
                             active: bool | None, activity_seq: int | None) -> None:
+        other_active = set(self._legacy_until)
+        other_active.update(
+            lease_symbol
+            for lease_client, (lease_symbol, _until) in self._leases.items()
+            if lease_client != client_id
+        )
+        activating = not (client_id and active is False)
+        if activating and symbol not in other_active and len(other_active) >= MAX_ACTIVE_SYMBOLS:
+            raise ClientCapacityError("当前活跃股票较多，请稍后重试")
         if client_id:
             tracked = self._leases.keys() | self._client_sequences.keys()
             if client_id not in tracked and len(tracked) >= MAX_TRACKED_CLIENTS:
@@ -158,6 +168,8 @@ class MarketService:
                 self._leases[client_id] = (symbol, now + ACTIVE_WINDOW_SECONDS)
         else:
             self._legacy_until[symbol] = now + ACTIVE_WINDOW_SECONDS
+        if not activating:
+            return
         if symbol not in self._cache:
             self._queued_since.setdefault(symbol, now)
         self._last_access[symbol] = now
@@ -340,12 +352,16 @@ class MarketService:
                 self._last_success[symbol] = completed_at
                 self._next_attempt[symbol] = completed_at + MARKET_REFRESH_SECONDS
             return True
-        except AuthorizationRequired as exc:
+        except AuthorizationRequired:
             completed_at = self.monotonic()
             with self._lock:
                 current_ref = self._cache.get(symbol)
             current = dict(current_ref) if current_ref is not None else self._pending(symbol)
-            current["state"], current["fetch_health"], current["error"] = "authorization_required", "awaiting_configuration", str(exc)
+            current["state"], current["fetch_health"], current["error"] = (
+                "authorization_required",
+                "awaiting_configuration",
+                "数据源授权失效，请在本机管理页重新配置",
+            )
             with self._lock:
                 self._next_attempt[symbol] = completed_at + MARKET_REFRESH_SECONDS
                 self._cache[symbol] = current
@@ -361,9 +377,17 @@ class MarketService:
                 current_ref = self._cache.get(symbol)
             failed = dict(current_ref) if current_ref is not None else self._pending(symbol)
             if current_ref is None:
-                failed.update(state="error", fetch_health="failed", error=f"行情刷新失败：{exc}")
+                failed.update(
+                    state="error",
+                    fetch_health="failed",
+                    error="行情刷新失败，请稍后重试",
+                )
             else:
-                failed.update(state="degraded", fetch_health="failed", error=f"行情刷新失败，保留最后成功快照：{exc}")
+                failed.update(
+                    state="degraded",
+                    fetch_health="failed",
+                    error="行情刷新失败，已保留最后成功快照",
+                )
             with self._lock:
                 self._next_attempt[symbol] = completed_at + retry_seconds
                 self._cache[symbol] = failed

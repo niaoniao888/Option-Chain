@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 import legacy_support as server
+from options_panel.logging import JsonFormatter
 
 
 class Response:
@@ -96,6 +97,21 @@ class FetchRetryTests(unittest.TestCase):
         self.assertEqual(opened.call_count, 1)
         slept.assert_not_called()
 
+    def test_upstream_exception_detail_is_not_logged(self):
+        secret = "token=FAKE-CREDENTIAL-123"
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(JsonFormatter())
+        server.LOGGER.addHandler(handler)
+        self.addCleanup(server.LOGGER.removeHandler, handler)
+        error = TimeoutError(f"https://example.invalid/?{secret}")
+        with mock.patch.object(
+            server.urllib.request, "urlopen", side_effect=[error, error]
+        ), mock.patch.object(server.time, "sleep"), self.assertRaises(TimeoutError):
+            server.fetch_json("/eapi/v1/ticker")
+        self.assertNotIn(secret, stream.getvalue())
+        self.assertIn("TimeoutError", stream.getvalue())
+
     def test_top_level_semantics_and_ssl_veto_override_transient_context(self):
         rate_limited = urllib.error.HTTPError("https://example.invalid", 429, "limited", {}, None)
         rate_limited.__context__ = TimeoutError("nested timeout")
@@ -166,7 +182,7 @@ class LoopReliabilityTests(unittest.TestCase):
         refresher = RecoveringRefresher(state, lambda path: None)
         refresher.stop_event = Event()
         refresher.run()
-        self.assertIn("后台刷新循环异常", state.errors[0])
+        self.assertEqual(state.errors[0], "后台刷新暂时不可用，请稍后重试")
         self.assertEqual(refresher.stop_event.waits[0], 5.0)
         self.assertEqual(state.scheduled, 70.0)
 

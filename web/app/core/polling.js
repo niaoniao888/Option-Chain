@@ -88,11 +88,13 @@ export class PollingController {
   }
   stop() {
     this.stopped = true;
+    this.resumeRequested = false;
     if (this.timer !== null) this.timers.clearTimeout(this.timer);
     this.timer = null;
     this.controller?.abort();
   }
   hidden() {
+    this.resumeRequested = false;
     this.controller?.abort();
     if (this.timer !== null) this.timers.clearTimeout(this.timer);
     this.timer = null;

@@ -5,7 +5,11 @@ from unittest import mock
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from options_panel.us_equities.watchlist_store import WatchlistStore, normalize_symbol
+from options_panel.us_equities.watchlist_store import (
+    WatchlistCapacityError,
+    WatchlistStore,
+    normalize_symbol,
+)
 
 
 class WatchlistTests(unittest.TestCase):
@@ -27,4 +31,19 @@ class WatchlistTests(unittest.TestCase):
             with mock.patch("options_panel.us_equities.watchlist_store.os.replace", side_effect=OSError("disk full")), self.assertRaises(OSError):
                 store.add("AAPL")
             self.assertEqual(store.list(), ["SPCX"])
+
+    def test_over_limit_existing_watchlist_can_be_read_and_reduced(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "watchlist.json"
+            symbols = [f"S{index}" for index in range(4)]
+            path.write_bytes(WatchlistStore._encode(symbols))
+            store = WatchlistStore(path)
+            with mock.patch(
+                "options_panel.us_equities.watchlist_store.MAX_WATCHLIST_SYMBOLS", 2
+            ):
+                self.assertEqual(store.list(), symbols)
+                with self.assertRaises(WatchlistCapacityError):
+                    store.add("EXTRA")
+                store.remove("S3")
+                self.assertEqual(store.list(), symbols[:3])
 

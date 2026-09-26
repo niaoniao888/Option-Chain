@@ -1,6 +1,6 @@
 # 统一期权面板 · BTC 与美股
 
-当前源码版本 **2.1.0**。后端 **Python + FastAPI + Uvicorn**，前端 **原生 HTML / CSS / JavaScript**。BTC 使用 Binance Options；美股使用 Alpaca 股票 IEX / 期权 Indicative。两个市场独立采集、缓存和报错，共用页面视觉规范，可以挂在 `/options/` 等路径。
+当前源码版本 **2.1.1**。后端 **Python + FastAPI + Uvicorn**，前端 **原生 HTML / CSS / JavaScript**。BTC 使用 Binance Options；美股使用 Alpaca 股票 IEX / 期权 Indicative。两个市场独立采集、缓存和报错，共用页面视觉规范，可以挂在 `/options/` 等路径。
 
 本仓库可独立运行。主面板 PC 和手机接口均只读，没有交易接口。两个市场均提供期权链、价格年化、年化排行三个视图；原期权说明入口和前台加载已取消，旧说明页记忆自动回到期权链。说明数据和后台兼容接口保留，但不在看板展示。美股自选通过独立的本机管理页维护；该页使用启动会话授权，不挂在主面板上，也不启动第二套行情采集。
 

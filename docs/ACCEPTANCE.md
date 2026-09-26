@@ -1,5 +1,17 @@
 # 当前验收入口
 
+## 2.1.1 工程加固候选（2026-09-27）
+
+本轮修复旧排序键规范化、CI fail-fast/格式门禁、公共错误与日志脱敏、页面可见性轮询竞态、跨文件恢复回滚、美股资源上限、Runtime/provider 身份验证及第三市场端到端注册路径。版本已同步为 2.1.1；当前仍是待提交、待远端 CI 与 Release 的候选，生产服务和个人运行数据未改动。
+
+本机隔离环境的实际结果：Python `compileall` 通过；`unittest discover` 共运行 202 项，201 通过、1 项 Windows 上跳过；两套 Node 行为测试通过，其中包含 2,000 轮虚拟刷新；Prettier `format:check` 通过；Playwright Chromium 34/34 通过。浏览器测试使用 collector-disabled 的 8785 临时服务，结束后已关闭，不访问真实行情或个人数据。
+
+Playwright 现有 Windows 固定数据视觉基线为 BTC/US × PC/手机 × 深浅主题 8 张，均通过 `toHaveScreenshot`。Linux expected PNG 不由 Windows 自动生成冒充；首次 Linux CI 应产出失败时的 actual artifact，人工检查后提交 Linux 基线，再运行第二轮 CI。普通 HTML 报告截图仍只作为当次证据。
+
+独立后端审查无 P1/P2：恢复测试额外遍历 16 种原文件存在组合与 48 个写入失败点，确认成功回滚或保留 recovery；容量反例确认 64 legacy + 64 client 后第 129 个 symbol 被拒绝且状态不变，130 项历史自选仍可读取并删除。轮询强反例在第二请求完成后继续等待，确认隐藏期间不会启动第三请求；回退到旧清标志行为时该用例会出现第三请求并保持 running。
+
+未验证范围：实体 iPhone/华为设备、真实开收盘切换、数周持续运行、公开域名负载和 128 个活跃 symbol 的真实刷新吞吐。128 是内存/队列资源上限，不承诺每个 symbol 都能在 60 秒内完成更新。生产服务不会随源码候选自动升级。
+
 ## 前端读取失败与超时保护（2026-09-26）
 
 - 前端轮询按自身 `AbortSignal` 状态和 `reason` 区分超时、页面隐藏及停止，不再依赖拒绝值必须是带 `AbortError` 名称的 `Error`。4500ms 请求超时、5000ms 常规轮询及原有重试边界保持不变。

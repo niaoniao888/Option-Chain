@@ -3,7 +3,7 @@ import logging, time
 from typing import Any, Callable
 import threading
 from options_panel.config import MARKET_INTERVAL, CATALOG_INTERVAL, MAX_BACKOFF
-from options_panel.logging import LOGGER, log_event
+from options_panel.logging import log_event
 from options_panel.providers.binance import fetch_json
 from options_panel.providers.bitcoin_options import BinanceOptionsProvider, BitcoinOptionsProvider
 from options_panel.runtime.snapshot import DashboardState
@@ -28,6 +28,17 @@ class Refresher(threading.Thread):
             return MAX_BACKOFF
         return min(MAX_BACKOFF, max(5.0, 5.0 * (2 ** (failures - 1))))
 
+    def _log_provider_failure(self, stage: str, exc: Exception) -> None:
+        log_event(
+            logging.WARNING,
+            "provider_refresh_failed",
+            market="bitcoin",
+            provider=getattr(self.provider, "source_name", type(self.provider).__name__),
+            instrument="BTCUSDT",
+            stage=stage,
+            exception_type=type(exc).__name__,
+        )
+
     def refresh_catalog(self) -> bool:
         try:
             self.state.commit_catalog(self.provider.catalog())
@@ -35,7 +46,8 @@ class Refresher(threading.Thread):
             return True
         except Exception as exc:  # Boundary: network and remote schema failures.
             self.catalog_failures += 1
-            self.state.fail_catalog(f"合约目录刷新失败：{exc}")
+            self.state.fail_catalog("合约目录刷新失败，请稍后重试")
+            self._log_provider_failure("catalog", exc)
             return False
 
     def fetch_open_interest(self, server_time_ms: int) -> dict[str, dict[str, Any]]:
@@ -59,14 +71,16 @@ class Refresher(threading.Thread):
                                 if mark_problems else None)
             except Exception as exc:
                 marks = {}
-                mark_warning = f"行权概率参数刷新失败：{exc}"
+                mark_warning = "行权概率参数刷新失败，请稍后重试"
+                self._log_provider_failure("marks", exc)
             final_server_time = self.provider.server_time()
             self.state.commit_market(quotes, index_price, final_server_time, open_interest, marks, mark_warning)
             self.market_failures = 0
             return True
         except Exception as exc:
             self.market_failures += 1
-            self.state.fail_market(f"行情刷新失败：{exc}")
+            self.state.fail_market("行情刷新失败，请稍后重试")
+            self._log_provider_failure("market", exc)
             return False
 
     def run(self) -> None:
@@ -125,14 +139,13 @@ class Refresher(threading.Thread):
                 wait_for = max(0.2, min(next_catalog, next_market) - self.state.monotonic())
                 self.stop_event.wait(min(wait_for, 1.0))
             except Exception as exc:
-                self.state.fail_market(f"后台刷新循环异常：{type(exc).__name__}: {exc}")
-                LOGGER.exception(
+                self.state.fail_market("后台刷新暂时不可用，请稍后重试")
+                log_event(
+                    logging.WARNING,
                     "refresh_loop_error",
-                    extra={"event_name": "refresh_loop_error", "event_fields": {
-                        "market": "bitcoin",
-                        "provider": getattr(self.provider, "source_name", type(self.provider).__name__),
-                        "instrument": "BTCUSDT",
-                        "exception_type": type(exc).__name__,
-                    }},
+                    market="bitcoin",
+                    provider=getattr(self.provider, "source_name", type(self.provider).__name__),
+                    instrument="BTCUSDT",
+                    exception_type=type(exc).__name__,
                 )
                 self.stop_event.wait(5.0)

@@ -44,14 +44,19 @@ def assemble_platform(settings: Settings, state: DashboardState | None = None,
     records: dict[str, RuntimeRecord] = {}
     for registration in selected.registrations():
         market_id = registration.descriptor.market_id
+        provider_id = registration.descriptor.provider_id
+        selector_error = None
         try:
             runtime = registration.runtime_factory(context)
+            if registration.provider_selector:
+                provider_id = registration.provider_selector(settings)
+            descriptor = runtime.descriptor
+            if descriptor.market_id != market_id or descriptor.provider_id != provider_id:
+                raise ValueError("market runtime returned mismatched identity")
             records[market_id] = RuntimeRecord(
-                market_id=market_id, descriptor=runtime.descriptor, runtime=runtime,
+                market_id=market_id, descriptor=descriptor, runtime=runtime,
             )
         except Exception as exc:
-            provider_id = registration.descriptor.provider_id
-            selector_error = None
             if registration.provider_selector:
                 try:
                     provider_id = registration.provider_selector(settings)

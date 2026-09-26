@@ -17,7 +17,11 @@ from options_panel.config import Settings
 from .credential_store import CredentialError, load_credentials
 from .guide_store import GuideConflictError, GuideError, GuideStore
 from .refresh_policy import public_refresh_policy
-from .watchlist_store import WatchlistConflictError, WatchlistStore
+from .watchlist_store import (
+    WatchlistCapacityError,
+    WatchlistConflictError,
+    WatchlistStore,
+)
 
 
 def create_admin_app(*, data_dir: Path, token: str, web_dir: Path, host: str = "127.0.0.1", port: int) -> FastAPI:
@@ -95,10 +99,13 @@ def create_admin_app(*, data_dir: Path, token: str, web_dir: Path, host: str = "
     @app.get("/api/health")
     def health():
         config_error = None
+        config_error_type = None
         try:
             configured = load_credentials() is not None
         except CredentialError as exc:
-            configured, config_error = False, str(exc)
+            configured = False
+            config_error = "数据源配置无效，请检查本机管理配置"
+            config_error_type = type(exc).__name__
         body: dict[str, Any] = {
             "app": "us-options-dashboard-admin",
             "status": "configured" if configured else ("configuration_error" if config_error else "configuration_required"),
@@ -109,6 +116,7 @@ def create_admin_app(*, data_dir: Path, token: str, web_dir: Path, host: str = "
         }
         if config_error:
             body["configuration_error"] = config_error
+            body["configuration_error_type"] = config_error_type
         return JSONResponse(body)
 
     @app.get("/api/watchlist")
@@ -127,6 +135,8 @@ def create_admin_app(*, data_dir: Path, token: str, web_dir: Path, host: str = "
             return JSONResponse(watchlist.add_document(payload.get("symbol"), request.headers.get("If-Match", "")))
         except WatchlistConflictError as exc:
             return error(str(exc), 409)
+        except WatchlistCapacityError as exc:
+            return error(str(exc), 429)
         except (ValueError, UnicodeError) as exc:
             return error(str(exc), 400)
 

@@ -9,8 +9,10 @@ TASK_START_INTERVAL_SECONDS = 5.0
 HTTP_START_INTERVAL_SECONDS = 1.0
 IDLE_CACHE_SECONDS = 30 * 60.0
 MAX_IDLE_CACHE_SYMBOLS = 10
+MAX_ACTIVE_SYMBOLS = 128
 CLIENT_SEQUENCE_RETENTION_SECONDS = 30.0
 MAX_TRACKED_CLIENTS = 2048
+MAX_WATCHLIST_SYMBOLS = 128
 
 
 def public_refresh_policy() -> dict[str, int | float]:
@@ -24,6 +26,8 @@ def public_refresh_policy() -> dict[str, int | float]:
         "http_start_interval_seconds": HTTP_START_INTERVAL_SECONDS,
         "idle_cache_seconds": IDLE_CACHE_SECONDS,
         "max_idle_cache_symbols": MAX_IDLE_CACHE_SYMBOLS,
+        "max_active_symbols": MAX_ACTIVE_SYMBOLS,
+        "max_watchlist_symbols": MAX_WATCHLIST_SYMBOLS,
         "client_sequence_retention_seconds": CLIENT_SEQUENCE_RETENTION_SECONDS,
     }
 

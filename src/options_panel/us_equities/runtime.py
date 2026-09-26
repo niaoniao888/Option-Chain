@@ -77,7 +77,7 @@ class UsEquitiesRuntime:
         try:
             self._collector.start()
         except Exception as exc:
-            self._startup_error = f"{type(exc).__name__}: {exc}"
+            self._startup_error = type(exc).__name__
             return
         self._startup_error = None
 
@@ -135,7 +135,8 @@ class UsEquitiesRuntime:
             **data_health,
         }
         if config_error:
-            result["configuration_error"] = config_error
+            result["configuration_error"] = "数据源配置无效，请检查本机管理配置"
         if self._startup_error:
-            result["collector_error"] = self._startup_error
+            result["collector_error"] = "行情采集器启动失败"
+            result["collector_error_type"] = self._startup_error
         return result

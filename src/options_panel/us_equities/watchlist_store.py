@@ -10,11 +10,17 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
+from .refresh_policy import MAX_WATCHLIST_SYMBOLS
+
 
 SYMBOL_RE = re.compile(r"^[A-Z][A-Z0-9.-]{0,9}$")
 
 
 class WatchlistConflictError(ValueError):
+    pass
+
+
+class WatchlistCapacityError(ValueError):
     pass
 
 
@@ -134,6 +140,10 @@ class WatchlistStore:
             updated = [item for item in current if item != symbol] if remove else (
                 current if symbol in current else [*current, symbol]
             )
+            if updated != current and not remove and len(updated) > MAX_WATCHLIST_SYMBOLS:
+                raise WatchlistCapacityError(
+                    f"自选列表最多允许 {MAX_WATCHLIST_SYMBOLS} 个股票代码"
+                )
             if updated != current:
                 self._atomic_write(self.backup_path, self._encode(current))
                 self._atomic_write(self.path, self._encode(updated))

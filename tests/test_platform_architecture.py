@@ -5,6 +5,7 @@ import tempfile
 import time
 import unittest
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 
@@ -398,6 +399,29 @@ class PlatformArchitectureTests(unittest.TestCase):
                 self.assertNotIn("token", json.dumps(status))
                 modules = {item["id"]: item for item in client.get("/api/v1/modules").json()}
                 self.assertEqual(modules["broken"]["provider_id"], "fallback")
+
+    def test_runtime_market_and_provider_identity_mismatch_is_isolated(self):
+        mismatched_market = StubRuntime(replace(THIRD, market_id="other-market"))
+        mismatched_provider = StubRuntime(replace(THIRD, provider_id="other-provider"))
+        good = StubRuntime()
+        registry = MarketRegistry((
+            MarketRegistration(
+                replace(THIRD, market_id="bad-market"),
+                lambda _context: mismatched_market,
+            ),
+            MarketRegistration(
+                replace(THIRD, market_id="bad-provider"),
+                lambda _context: mismatched_provider,
+            ),
+            MarketRegistration(THIRD, lambda _context: good),
+        ))
+        with self.app_root() as root:
+            with TestClient(create_app(self.settings(root), DashboardState(), registry)) as client:
+                status = client.get("/api/v1/status").json()["markets"]
+                self.assertEqual(status["bad-market"]["initialization_error"], "ValueError")
+                self.assertEqual(status["bad-provider"]["initialization_error"], "ValueError")
+                self.assertEqual(status["test-market"]["runtime"]["status"], "healthy")
+                self.assertEqual(good.started, 1)
 
     def test_replacement_provider_is_registry_data(self):
         providers = default_provider_registry()

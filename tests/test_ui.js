@@ -573,15 +573,17 @@ const root = path.resolve(__dirname, ".."),
   controller.stop();
   const documentRef = { hidden: false };
   let visibleRequests = 0,
-    visibilityFailures = 0;
+    visibilityFailures = 0,
+    visibleResolve;
   const visibility = new polling.PollingController({
     request: (signal) => {
       visibleRequests++;
-      return new Promise((resolve, reject) =>
+      return new Promise((resolve, reject) => {
+        visibleResolve = resolve;
         signal.addEventListener("abort", () => reject(signal.reason), {
           once: true,
-        }),
-      );
+        });
+      });
     },
     commit: () => {},
     fail: () => visibilityFailures++,
@@ -594,8 +596,20 @@ const root = path.resolve(__dirname, ".."),
   visibility.hidden();
   documentRef.hidden = false;
   visibility.visible();
+  documentRef.hidden = true;
+  visibility.hidden();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(visibleRequests, 1);
+  documentRef.hidden = false;
+  visibility.visible();
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(visibleRequests, 2);
+  visibleResolve({ ok: true });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(visibleRequests, 2);
+  assert.equal(visibility.running, false);
+  assert.equal(visibility.resumeRequested, false);
+  assert.equal(visibility.pendingTimers, 1);
   visibility.stop();
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(visibilityFailures, 0);

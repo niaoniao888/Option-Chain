@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from options_panel.us_equities.alpaca_adapter import AlpacaError, AuthorizationRequired, RateLimited
-from options_panel.us_equities.market_service import MarketService
+from options_panel.us_equities.market_service import ClientCapacityError, MarketService
 from options_panel.us_equities.request_throttle import GlobalRequestGate
 
 class Clock:
@@ -40,6 +40,23 @@ class MarketServiceTests(unittest.TestCase):
         self.assertEqual(self.service.snapshot("SPCX")["contracts"][0]["annualized_pct"],apr)
         self.assertEqual(self.service.snapshot("SPCX")["state"],"degraded")
         self.adapter.error=None; self.mono.value+=60; self.assertTrue(self.service.refresh("SPCX"))
+
+    def test_provider_exception_detail_never_reaches_public_snapshot(self):
+        secret = "token=FAKE-CREDENTIAL-123"
+        self.adapter.error = RuntimeError(f"https://example.invalid/?{secret}")
+        self.assertFalse(self.service.refresh("SPCX"))
+        payload = self.service.snapshot("SPCX")
+        self.assertNotIn(secret, str(payload))
+        self.assertEqual(payload["error"], "行情刷新失败，请稍后重试")
+
+    def test_legacy_and_client_requests_share_active_symbol_capacity(self):
+        with mock.patch("options_panel.us_equities.market_service.MAX_ACTIVE_SYMBOLS", 2):
+            self.service.snapshot("AAPL")
+            self.service.snapshot("MSFT", client_id="tab", active=True)
+            with self.assertRaises(ClientCapacityError):
+                self.service.snapshot("SPCX", client_id="other", active=True)
+            self.assertEqual(set(self.service._queued_since), {"AAPL", "MSFT"})
+            self.assertEqual(len(self.service._active_symbols_locked(self.mono.value)), 2)
 
     def test_versioned_light_snapshot_omits_contracts_and_avoids_deepcopy(self):
         self.assertTrue(self.service.refresh("SPCX"))

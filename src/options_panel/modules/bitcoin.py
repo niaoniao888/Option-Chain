@@ -77,7 +77,7 @@ class BitcoinRuntime:
         try:
             self._collector.start()
         except Exception as exc:
-            self.startup_error = f"{type(exc).__name__}: {exc}"
+            self.startup_error = type(exc).__name__
             raise
         self.startup_error = None
 

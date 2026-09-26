@@ -179,6 +179,16 @@ class IntegrationTests(unittest.TestCase):
                 json={"symbol": "MSFT"},
             )
             self.assertEqual(conflict.status_code, 409)
+            with mock.patch(
+                "options_panel.us_equities.watchlist_store.MAX_WATCHLIST_SYMBOLS", 2
+            ):
+                capacity = client.post(
+                    "/api/watchlist",
+                    headers={**same_origin, "If-Match": added.json()["revision"]},
+                    json={"symbol": "MSFT"},
+                )
+            self.assertEqual(capacity.status_code, 429)
+            self.assertIn("最多允许 2 个", capacity.json()["error"])
             guide = client.get("/api/options-guide", headers=auth).json()
             updated = client.put(
                 "/api/options-guide",

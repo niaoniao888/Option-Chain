@@ -76,10 +76,10 @@ POST / PUT / PATCH / DELETE 均返回 405，不提供写接口。没有开启跨
 | `/api/v1/us-equities/options-guide` | sections、revision、updated_at |
 | `/api/v1/us-equities/snapshot?symbol=GOOG` | 独立美股快照 |
 
-快照必须提供唯一 symbol 且属于该实例自选；if_version 可传上一版本。版本不变时 unchanged=true 且不发送 contracts，前端必须保留原合约数组，并按新状态更新过期/排行资格。client_id 为每个页面独立的 1–64 位标识；active=1 续租、active=0 释放；activity_seq 单调增加以抵抗乱序。最多跟踪 2048 个短期会话，超限新会话返回 429 和 Retry-After:15。此容量保护不替代公开网站反代限流。
+快照必须提供唯一 symbol 且属于该实例自选；if_version 可传上一版本。版本不变时 unchanged=true 且不发送 contracts，前端必须保留原合约数组，并按新状态更新过期/排行资格。client_id 为每个页面独立的 1–64 位标识；active=1 续租、active=0 释放；activity_seq 单调增加以抵抗乱序。最多跟踪 2048 个短期会话，超限新会话返回 429 和 Retry-After:15。legacy 与 client_id 请求共用最多 128 个活跃 symbol 的资源上限；刷新队列不会超过该上限，闲置缓存保留最近 10 个 symbol。128 是资源保护值，不承诺 128 个 symbol 都能在每个 60 秒周期内完成刷新。此容量保护不替代公开网站反代限流。
 
 美股字段包含 underlying_price、market_status、quote_time、fetched_at、calculated_at、fetch_health、mode、snapshot_version。合约字段以 us_equities/model.py 为准，包含 annualized_pct、period_return_pct、capital_base、time_value、calculation_basis_utc、exercise_probability_pct、probability_reason、ranking_eligible、close_reference_eligible 等。不得把 BTC index_price/markIV 等字段强行映射成同一含义。
 
 美股健康接口及 `/api/v1/status` 的公开 Runtime 摘要可包含 `data_status`（`no_active` / `waiting` / `partial` / `healthy` / `failed` / `degraded` / `stale`）、active/cache/queued/inflight/waiting symbol 数、failure_count、data_age_seconds 和 contract_count。这些字段只汇总顶层元数据，不生成快照或复制合约。`no_active` 表示当前没有访问租约，不等于采集故障；`partial` 表示部分活跃标的已有成功快照、其余仍在首轮等待。存在 `partial`、刷新失败或过期时 Runtime `status` 降级。原接口状态码和既有字段不变。
 
-本机管理 API 在另一回环进程，路径为 /api/watchlist 和 /api/options-guide。全部管理 GET 也需 Authorization:Bearer；POST/DELETE 自选与 PUT 说明需 If-Match、同源 Origin/Host 和 JSON Content-Type。409 表示版本冲突，不可直接重试覆盖。主服务不注册这些写路由，管理静态资源也不可从主服务读取。
+本机管理 API 在另一回环进程，路径为 /api/watchlist 和 /api/options-guide。全部管理 GET 也需 Authorization:Bearer；POST/DELETE 自选与 PUT 说明需 If-Match、同源 Origin/Host 和 JSON Content-Type。409 表示版本冲突，不可直接重试覆盖。自选最多新增到 128 个，达到上限后新增返回 429；历史文件即使已超过上限仍可读取并删除，以便安全缩减，不能通过继续新增扩大。主服务不注册这些写路由，管理静态资源也不可从主服务读取。

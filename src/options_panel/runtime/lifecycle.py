@@ -18,7 +18,7 @@ PUBLIC_REFRESH_POLICY_FIELDS = {
     "market_refresh_seconds", "cache_poll_seconds", "stale_after_seconds",
     "active_window_seconds", "scheduler_tick_seconds", "task_start_interval_seconds",
     "http_start_interval_seconds", "idle_cache_seconds", "max_idle_cache_symbols",
-    "client_sequence_retention_seconds",
+    "max_active_symbols", "max_watchlist_symbols", "client_sequence_retention_seconds",
 }
 
 

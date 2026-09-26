@@ -92,20 +92,63 @@ def restore(source: Path, destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:") as archive:
         members = _members(archive)
-        with tempfile.TemporaryDirectory(prefix=".restore-", dir=destination) as staging_name:
-            staging = Path(staging_name)
-            archive.extractall(staging, members=members, filter="data")
-            staged_root = staging.resolve()
-            if any(not path.resolve().is_relative_to(staged_root) for path in staging.rglob("*")):
-                raise ValueError("归档内容越过恢复目录")
-            for member in members:
-                _validate_document(member.name, (staging / member.name).read_bytes())
-            for name in DATA_FILES:
-                child = destination / name
-                if child.exists():
-                    child.unlink()
-            for child in list(staging.iterdir()):
-                shutil.move(str(child), destination / child.name)
+        recovery = Path(tempfile.mkdtemp(prefix=".restore-recovery-", dir=destination))
+        original_names: set[str] = set()
+        preserve_recovery = False
+        try:
+            for name in sorted(DATA_FILES):
+                target = destination / name
+                if target.is_symlink() or (target.exists() and not target.is_file()):
+                    raise ValueError(f"恢复目标不是普通文件：{name}")
+                if target.exists():
+                    shutil.copy2(target, recovery / name)
+                    original_names.add(name)
+            with tempfile.TemporaryDirectory(prefix=".restore-stage-", dir=destination) as staging_name:
+                staging = Path(staging_name)
+                archive.extractall(staging, members=members, filter="data")
+                staged_root = staging.resolve()
+                if any(not path.resolve().is_relative_to(staged_root) for path in staging.rglob("*")):
+                    raise ValueError("归档内容越过恢复目录")
+                for member in members:
+                    _validate_document(member.name, (staging / member.name).read_bytes())
+                archived = {member.name for member in members}
+                try:
+                    for name in sorted(DATA_FILES):
+                        target = destination / name
+                        if name in archived:
+                            os.replace(staging / name, target)
+                        elif target.exists():
+                            target.unlink()
+                except Exception as restore_exc:
+                    rollback_errors: list[tuple[str, Exception]] = []
+                    for name in sorted(DATA_FILES):
+                        target = destination / name
+                        try:
+                            if name in original_names:
+                                rollback_copy = recovery / f".{name}.rollback"
+                                shutil.copy2(recovery / name, rollback_copy)
+                                try:
+                                    os.replace(rollback_copy, target)
+                                except OSError:
+                                    shutil.copy2(recovery / name, target)
+                                    rollback_copy.unlink(missing_ok=True)
+                            elif target.exists():
+                                target.unlink()
+                        except Exception as rollback_exc:
+                            rollback_errors.append((name, rollback_exc))
+                    if rollback_errors:
+                        preserve_recovery = True
+                        names = ", ".join(name for name, _error in rollback_errors)
+                        raise RuntimeError(
+                            f"恢复失败，部分原数据无法自动回滚；恢复副本保留在 {recovery}；受影响文件：{names}"
+                        ) from restore_exc
+                    raise
+        except Exception:
+            if not preserve_recovery:
+                shutil.rmtree(recovery, ignore_errors=True)
+            raise
+        else:
+            shutil.rmtree(recovery)
 
 
 def main() -> int:
