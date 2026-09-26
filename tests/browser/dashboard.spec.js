@@ -189,33 +189,71 @@ for (const market of ["bitcoin", "us-equities"]) {
   }
 }
 
-test("desktop tables share one column width and expiry time sorts by instant", async ({
+test("desktop tables share one total width and expiry time sorts by instant", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize({ width: 1280, height: 1200 });
   await mockApi(page);
   await page.unroute("**/api/v1/bitcoin/snapshot");
-  const earlier = {
-    ...btc.contracts.find((row) => row.side === "CALL" && row.strike === 90000),
-    symbol: "BTC-CALL-90000-EARLIER",
-    expiry_ms: now + 86400000,
-  };
+  const denseContracts = ["CALL", "PUT"].flatMap((side) =>
+      Array.from({ length: 40 }, (_, index) => ({
+        ...btc.contracts.find((row) => row.side === side),
+        symbol: `BTC-${side}-DENSE-${index}`,
+        strike: 70000 + index * 1000,
+      })),
+    ),
+    earlier = {
+      ...denseContracts.find(
+        (row) => row.side === "CALL" && row.strike === 90000,
+      ),
+      symbol: "BTC-CALL-90000-EARLIER",
+      expiry_ms: now + 86400000,
+    };
   await page.route("**/api/v1/bitcoin/snapshot", (route) =>
-    route.fulfill({ json: { ...btc, contracts: [...btc.contracts, earlier] } }),
+    route.fulfill({
+      json: { ...btc, contracts: [...denseContracts, earlier] },
+    }),
   );
   await page.goto("/bitcoin/desktop/");
   const measure = (selector) =>
     page.locator(selector).evaluate((table) => ({
       width: table.getBoundingClientRect().width,
+      left: table.getBoundingClientRect().left,
+      right: table.getBoundingClientRect().right,
+      wrapWidth: table.closest(".table-wrap").getBoundingClientRect().width,
+      wrapClientHeight: table.closest(".table-wrap").clientHeight,
+      wrapScrollHeight: table.closest(".table-wrap").scrollHeight,
       columns: [...table.querySelectorAll("thead tr:first-child th")].map(
         (cell) => cell.getBoundingClientRect().width,
       ),
     }));
-  const chain = await measure(".chain-table");
-  expect(chain.width).toBeCloseTo(1200, 0);
-  for (const width of chain.columns) expect(width).toBeCloseTo(1200 / 7, 0);
+  for (const viewportWidth of [1280, 1920]) {
+    await page.setViewportSize({ width: viewportWidth, height: 1200 });
+    await page.locator('[data-view="chain"]').click();
+    const chain = await measure(".chain-table");
+    await page.locator('[data-view="price"]').click();
+    const price = await measure(".price-table");
+    await page.locator('[data-view="ranking"]').click();
+    const ranking = await measure(".ranking-table");
+    for (const table of [chain, price, ranking])
+      expect(table.width).toBeCloseTo(1200, 0);
+    for (const width of chain.columns) expect(width).toBeCloseTo(1200 / 7, 0);
+    for (const width of price.columns) expect(width).toBeCloseTo(1200 / 5, 0);
+    for (const width of ranking.columns) expect(width).toBeCloseTo(1200 / 6, 0);
+    expect(chain.wrapScrollHeight).toBeGreaterThan(chain.wrapClientHeight);
+    expect(ranking.wrapScrollHeight).toBeLessThanOrEqual(
+      ranking.wrapClientHeight,
+    );
+    expect(price.left).toBeCloseTo(chain.left, 0);
+    expect(ranking.left).toBeCloseTo(chain.left, 0);
+    expect(price.right).toBeCloseTo(chain.right, 0);
+    expect(ranking.right).toBeCloseTo(chain.right, 0);
+    if (viewportWidth === 1920)
+      expect(chain.wrapWidth).toBeGreaterThan(chain.width);
+  }
   await expect(page.locator(".floating-quote")).toHaveCSS("width", "200px");
 
+  await page.setViewportSize({ width: 1280, height: 1200 });
   await page.locator('[data-view="price"]').click();
   await page.locator('#priceHead [data-sort="expiry_time"]').click();
   await expect(
@@ -225,10 +263,6 @@ test("desktop tables share one column width and expiry time sorts by instant", a
   await expect(page.locator("#priceBody tr td:last-child").first()).toHaveText(
     "2026-10-02 20:00",
   );
-  const price = await measure(".price-table");
-  expect(price.width).toBeCloseTo((1200 / 7) * 5, 0);
-  for (const width of price.columns) expect(width).toBeCloseTo(1200 / 7, 0);
-
   await page.locator('[data-view="ranking"]').click();
   await expect(page.locator("#rankingHead th")).toHaveCount(6);
   await expect(page.locator("#rankingHead th:last-child")).toContainText(
@@ -241,9 +275,6 @@ test("desktop tables share one column width and expiry time sorts by instant", a
   await expect(
     page.locator("#rankingBody tr td:last-child").first(),
   ).toHaveText("2026-10-02 20:00");
-  const ranking = await measure(".ranking-table");
-  expect(ranking.width).toBeCloseTo((1200 / 7) * 6, 0);
-  for (const width of ranking.columns) expect(width).toBeCloseTo(1200 / 7, 0);
 });
 
 test("restored price groups, compact mobile menus and quotes", async ({
@@ -616,9 +647,7 @@ test("text selection defers table replacement then flushes", async ({
     route.fulfill({ json: { ...btc, market_generation_ms: now + requests } });
   });
   await page.goto("/bitcoin/mobile/");
-  await expect(
-    page.locator("#chainBody .sticky-strike").first(),
-  ).toBeVisible();
+  await expect(page.locator("#chainBody .sticky-strike").first()).toBeVisible();
   await page.evaluate(() => {
     const node = document.querySelector("#chainBody td");
     const range = document.createRange();
@@ -654,9 +683,7 @@ test("same snapshot generation keeps table DOM stable", async ({ page }) => {
     await route.fulfill({ json: btc });
   });
   await page.goto("/bitcoin/mobile/");
-  await expect(
-    page.locator("#chainBody .sticky-strike").first(),
-  ).toBeVisible();
+  await expect(page.locator("#chainBody .sticky-strike").first()).toBeVisible();
   expect(
     await page.evaluate(() => {
       const row = document.querySelector("#chainBody tr");

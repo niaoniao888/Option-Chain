@@ -27,7 +27,7 @@
   --button-atm-border: #e3c36c;
   --button-atm-text: #765207;
   --shadow: 0 8px 24px rgba(22, 48, 82, 0.08);
-  --table-column-width: calc(1200px / 7);
+  --table-width: 1200px;
   font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
@@ -481,14 +481,14 @@ main {
   max-height: 65vh;
 }
 .chain-table {
-  width: calc(var(--table-column-width) * 7);
+  width: var(--table-width);
   min-width: 1200px;
 }
 .price-table {
-  width: calc(var(--table-column-width) * 5);
+  width: var(--table-width);
 }
 .ranking-table {
-  width: calc(var(--table-column-width) * 6);
+  width: var(--table-width);
 }
 table {
   margin: auto;
@@ -628,6 +628,14 @@ footer {
 }
 footer a {
   color: inherit;
+}
+@media (min-width: 701px) {
+  html {
+    scrollbar-gutter: stable;
+  }
+  .table-wrap {
+    scrollbar-gutter: stable both-edges;
+  }
 }
 @media (max-width: 700px) {
   .market-tabs {
