@@ -128,6 +128,19 @@ for (const market of ["bitcoin", "us-equities"]) {
         await mockApi(page);
         await page.goto(`/${market}/${mode}/`);
         await expect(page.locator("#health")).toHaveText("正常");
+        if (mode === "mobile") {
+          await expect(page.locator("#expiryValue")).toHaveText("2026-10-03");
+          await expect(page.locator("#expiryDetail")).toContainText(
+            market === "bitcoin"
+              ? "到期时间：2026-10-03 20:30"
+              : "到期时间：2026-10-03 20:00",
+          );
+          await page.locator("#expiryTrigger").click();
+          await expect(page.locator("#expiryMenu [role=option]").first()).toContainText(
+            market === "bitcoin" ? "2026-10-03（剩余2天）" : "2026-10-03（剩余",
+          );
+          await page.locator("#expiryTrigger").click();
+        }
         for (const theme of ["light", "dark"]) {
           await page.locator(`button[data-theme="${theme}"]`).click();
           for (const view of ["chain", "price", "ranking"]) {
@@ -207,7 +220,8 @@ test("desktop tables share one total width and expiry time sorts by instant", as
         (row) => row.side === "CALL" && row.strike === 90000,
       ),
       symbol: "BTC-CALL-90000-EARLIER",
-      expiry_ms: now + 86400000,
+      expiry_ms: now + 2 * 86400000,
+      remaining_seconds: 2 * 86400,
     };
   await page.route("**/api/v1/bitcoin/snapshot", (route) =>
     route.fulfill({
@@ -261,7 +275,7 @@ test("desktop tables share one total width and expiry time sorts by instant", as
   ).toContainText("到期时间");
   await expect(page.locator("#priceBody tr")).toHaveCount(2);
   await expect(page.locator("#priceBody tr td:last-child").first()).toHaveText(
-    "2026-10-02 20:00",
+    "1天",
   );
   await page.locator('[data-view="ranking"]').click();
   await expect(page.locator("#rankingHead th")).toHaveCount(6);
@@ -274,7 +288,52 @@ test("desktop tables share one total width and expiry time sorts by instant", as
   ).toContainText("到期时间");
   await expect(
     page.locator("#rankingBody tr td:last-child").first(),
-  ).toHaveText("2026-10-02 20:00");
+  ).toHaveText("1天");
+});
+
+test("table expiry duration is shared by both markets and escapes less-than text", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await mockApi(page);
+  await page.unroute("**/api/v1/bitcoin/snapshot");
+  await page.unroute("**/api/v1/us-equities/snapshot?**");
+  await page.route("**/api/v1/bitcoin/snapshot", (route) =>
+    route.fulfill({
+      json: {
+        ...btc,
+        contracts: btc.contracts.map((row) => ({
+          ...row,
+          expiry_ms: now + 1000 * 1000,
+          remaining_seconds: 1000,
+        })),
+      },
+    }),
+  );
+  await page.route("**/api/v1/us-equities/snapshot?**", (route) =>
+    route.fulfill({
+      json: {
+        ...us,
+        contracts: us.contracts.map((row) => ({
+          ...row,
+          expiration_date: "2026-10-01",
+          expires_at_utc: new Date(now + 1000 * 1000).toISOString(),
+          remaining_seconds: 1000,
+        })),
+      },
+    }),
+  );
+  for (const market of ["bitcoin", "us-equities"]) {
+    await page.goto(`/${market}/mobile/`);
+    for (const view of ["price", "ranking"]) {
+      await page.locator(`[data-view="${view}"]`).click();
+      const body = page.locator(`#${view}Body`);
+      await expect(body.locator("tr td:last-child").first()).toHaveText(
+        "<1小时",
+      );
+      expect(await body.locator("tr td:last-child span").count()).toBe(0);
+    }
+  }
 });
 
 test("restored price groups, compact mobile menus and quotes", async ({

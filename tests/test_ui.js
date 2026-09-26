@@ -197,6 +197,17 @@ const root = path.resolve(__dirname, ".."),
   assert.equal(formats.chinaDateTimeMinute(null), "—");
   assert.equal(formats.chinaDateTimeMinute(""), "—");
   assert.equal(formats.chinaDateTimeMinute(1e20), "—");
+  assert.equal(formats.tableRemaining(NaN), "—");
+  assert.equal(formats.tableRemaining(Infinity), "—");
+  assert.equal(formats.tableRemaining(-1), "—");
+  assert.equal(formats.tableRemaining(0), "已到期");
+  assert.equal(formats.tableRemaining(1), "<1小时");
+  assert.equal(formats.tableRemaining(3599), "<1小时");
+  assert.equal(formats.tableRemaining(3600), "1小时");
+  assert.equal(formats.tableRemaining(86399), "23小时");
+  assert.equal(formats.tableRemaining(86400), "1天");
+  assert.equal(formats.tableRemaining(172799), "1天");
+  assert.equal(formats.tableRemaining(172800), "2天");
   assert.equal(
     btcAdapter.expiryDetail({
       expiry_ms: Date.parse("2026-10-03T12:00:00Z"),

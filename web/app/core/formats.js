@@ -21,6 +21,13 @@ export const remaining = (seconds) => {
       ? `${hours}小时 ${minutes}分`
       : `${minutes}分`;
 };
+export const tableRemaining = (seconds) => {
+  if (!finite(seconds) || seconds < 0) return "—";
+  if (seconds === 0) return "已到期";
+  if (seconds >= 86400) return `${Math.floor(seconds / 86400)}天`;
+  if (seconds >= 3600) return `${Math.floor(seconds / 3600)}小时`;
+  return "<1小时";
+};
 export const date = (value) => {
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value))
     return value;
