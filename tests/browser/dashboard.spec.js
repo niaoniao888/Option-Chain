@@ -236,6 +236,19 @@ for (const market of ["bitcoin", "us-equities"]) {
             maxDiffPixelRatio: 0.01,
           },
         );
+        const currentBaselineDir = path.join(
+          "test-results",
+          "current-baselines",
+        );
+        fs.mkdirSync(currentBaselineDir, { recursive: true });
+        await page.locator("#app").screenshot({
+          path: path.join(
+            currentBaselineDir,
+            `${market}-${mode}-${theme}-${process.platform}.png`,
+          ),
+          animations: "disabled",
+          caret: "hide",
+        });
       });
     }
   }
