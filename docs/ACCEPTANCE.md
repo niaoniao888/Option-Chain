@@ -181,4 +181,6 @@ Chrome 实际页面检查发现，普通刷新后仍复用了旧 `styles.css?v=2
 
 后续颜色治理发现，Dashboard 已为 BTC 和美股统一生成行权价列的 `atm`、`below`、`above` 状态，但对应背景色规则只对 `.market-bitcoin` 生效。本轮只移除行权价三组规则的市场前缀，使两市场统一使用 `--strike-atm`、`--strike-low`、`--strike-high`；BTC 策略侧原有 ITM/OTM/ATM 颜色规则保持不变。CSS 查询版本随之更新为 `20260927-strike-colors1`。
 
-计算样式测试覆盖 BTC/美股 × 桌面/手机 × 深浅主题，逐项确认三个状态等于对应 CSS 变量且两市场一致；该项与表头滚动回归合计 5/5 通过。Windows 固定时钟视觉基线已强制重新生成并目视检查 4 张 US `win32` PNG，随后无更新模式复测通过；BTC 和全部 Linux PNG 未修改。Linux 新颜色截图尚未生成或验证，需由 Linux CI 更新并审阅对应 4 张基线后才能视为跨平台视觉验收完成。
+计算样式测试覆盖 BTC/美股 × 桌面/手机 × 深浅主题，逐项确认三个状态等于对应 CSS 变量且两市场一致；该项与表头滚动回归合计 5/5 通过。Windows 固定时钟视觉基线已重新生成并目视检查 4 张 US `win32` PNG，随后无更新模式复测通过。Linux 实际截图来自提交 `9698974` 的 [CI 运行 36270339000](https://github.com/niaoniao888/Option-Chain/actions/runs/36270339000)，该运行四个必需检查全部通过，浏览器 39/39 通过。报告 ZIP 的 SHA-256 为 `abe0b7e63e690fc124b1fa42712608da17aa46cf0e3a313aa0896bdfde71bdc2`；下载校验后只提取对应 4 张 US Linux PNG，逐图审阅后作为参考基线。BTC 基线未修改。
+
+主 Agent 本机最终回归：Python 202 项通过（1 项平台跳过）、两组 Node 行为测试通过、格式检查通过、Windows Playwright 39/39 通过。截图测试在原有视觉断言通过后额外保存实际 PNG 到被忽略的 `test-results/current-baselines/`，便于人工复核；没有改变视觉断言或 1% 容差。共享背景色另有精确的计算样式断言，避免颜色差异仅因整图容差而被忽略。最终合并提交的检查状态以 PR #2 和对应 Actions 为准；实体手机未测试。
